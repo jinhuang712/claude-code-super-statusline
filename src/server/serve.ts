@@ -19,7 +19,7 @@ import { getHudPluginDir } from "../data/claude-config-dir.js";
 import type { StdinData } from "../data/types.js";
 import { registerBuiltinWidgets } from "../widgets/index.js";
 import { guardRequest, HttpError, MAX_BODY_BYTES, readJson } from "./guard.js";
-import { adoptLegacyStatusLine, install, NeedsConfirmError, planInstall, settingsPath, uninstall } from "./install.js";
+import { adoptLegacyStatusLine, install, NeedsConfirmError, planInstall, RefreshIntervalError, setRefreshInterval, settingsPath, uninstall } from "./install.js";
 import { currentSandbox, enterServeSandbox, isInsideSandbox } from "./sandbox.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -301,6 +301,18 @@ async function handleApi(req: Request, url: URL): Promise<Response> {
         return json(r);
       } catch (err) {
         if (err instanceof NeedsConfirmError) return json({ error: "needs-confirm", current: err.current }, 409);
+        throw err;
+      }
+    }
+    case "POST /api/refresh-interval": {
+      // `seconds: null` clears the timer (refresh only on session events). 400 for anything Claude
+      // Code would not accept or when our statusLine isn't the one installed.
+      const body = await readJson<{ seconds?: unknown }>(req);
+      const seconds = body.seconds === null ? null : typeof body.seconds === "number" ? body.seconds : NaN;
+      try {
+        return json(setRefreshInterval(seconds));
+      } catch (err) {
+        if (err instanceof RefreshIntervalError) return json({ error: err.message }, 400);
         throw err;
       }
     }

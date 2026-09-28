@@ -104,4 +104,34 @@ describe("install API", () => {
     expect(await (await call("/api/uninstall", "POST", {})).json()).toMatchObject({ removed: true, restored: HUD });
     expect(JSON.parse(fs.readFileSync(settingsPath(), "utf8"))).toEqual({ statusLine: HUD });
   });
+
+  test("a fresh install refreshes every 5 s; reinstalling keeps the user's own interval", async () => {
+    await call("/api/install", "POST", {});
+    const read = () => JSON.parse(fs.readFileSync(settingsPath(), "utf8")).statusLine;
+    expect(read().refreshInterval).toBe(5);
+    await call("/api/refresh-interval", "POST", { seconds: 30 });
+    await call("/api/install", "POST", {});
+    expect(read().refreshInterval).toBe(30);
+  });
+
+  test("POST /api/refresh-interval sets, clears and validates the interval on our entry only", async () => {
+    const read = () => JSON.parse(fs.readFileSync(settingsPath(), "utf8")).statusLine;
+    // Someone else's statusline is not ours to retime.
+    fs.mkdirSync(path.dirname(settingsPath()), { recursive: true });
+    fs.writeFileSync(settingsPath(), JSON.stringify({ statusLine: HUD }));
+    expect((await call("/api/refresh-interval", "POST", { seconds: 5 })).status).toBe(400);
+    expect(read()).toEqual(HUD);
+
+    await call("/api/install", "POST", { confirmReplace: true });
+    expect(await (await call("/api/refresh-interval", "POST", { seconds: 10 })).json()).toMatchObject({ refreshInterval: 10, unchanged: false });
+    expect(read().refreshInterval).toBe(10);
+    expect(await (await call("/api/refresh-interval", "POST", { seconds: 10 })).json()).toMatchObject({ unchanged: true, backup: null });
+    expect(await (await call("/api/refresh-interval", "POST", { seconds: null })).json()).toMatchObject({ refreshInterval: null });
+    expect("refreshInterval" in read()).toBe(false);
+    // Below Claude Code's minimum, fractional, absurdly slow, or not a number at all.
+    for (const seconds of [0, 1.5, 3601, "5", undefined]) {
+      expect((await call("/api/refresh-interval", "POST", { seconds })).status).toBe(400);
+    }
+    expect("refreshInterval" in read()).toBe(false);
+  });
 });

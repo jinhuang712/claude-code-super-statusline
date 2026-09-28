@@ -26,6 +26,20 @@ export const PREVIOUS_KEY = "statusLine.previous.claude-code-super-statusline";
  */
 export const LEGACY_PREVIOUS_KEY = "statusLine.previous.claude-code-ssp";
 
+/**
+ * `statusLine.refreshInterval` a fresh install writes, in seconds. Claude Code re-runs the command
+ * every N seconds on top of its event-driven updates (minimum 1, per code.claude.com/docs/en/statusline).
+ * 5 s makes a configurator save show up quickly while a warm render costs only a few milliseconds.
+ */
+export const DEFAULT_REFRESH_SECONDS = 5;
+/** Claude Code's documented minimum for refreshInterval. */
+const MIN_REFRESH_SECONDS = 1;
+/**
+ * Our own ceiling. A timer slower than an hour refreshes almost nothing; rejecting it also keeps a
+ * typo such as 3000 (meant as ms) from quietly turning the timer off in practice.
+ */
+const MAX_REFRESH_SECONDS = 3600;
+
 /** The parked statusLine, under either key name. */
 function parkedPrevious(settings: Record<string, unknown>): unknown {
   return settings[PREVIOUS_KEY] ?? settings[LEGACY_PREVIOUS_KEY];
@@ -177,7 +191,9 @@ export function planInstall(opts: InstallOptions = {}): InstallPlan {
   const currentIsOurs = isOurStatusLine(current);
   // Reinstalling over our own entry keeps whatever the user added to it (refreshInterval, padding…);
   // only the command is ours to update.
-  const planned: Record<string, unknown> = currentIsOurs && isPlainObject(current) ? { ...current } : { padding: 0 };
+  // A fresh entry refreshes on a timer: Claude Code otherwise re-runs the statusline only on session
+  // events, so a save in the configurator (or the clock) would not show until the next message.
+  const planned: Record<string, unknown> = currentIsOurs && isPlainObject(current) ? { ...current } : { padding: 0, refreshInterval: DEFAULT_REFRESH_SECONDS };
   planned.type = "command";
   planned.command = opts.command ?? defaultCommand();
   if (opts.refreshInterval) planned.refreshInterval = opts.refreshInterval;
@@ -250,6 +266,40 @@ export function uninstall(): UninstallResult {
   delete settings[LEGACY_PREVIOUS_KEY];
   const backup = writeSettings(file, settings);
   return { settingsFile: file, restored: restorable ? prev : null, removed: true, backup };
+}
+
+/** Thrown by setRefreshInterval for a value Claude Code would not accept, or when there is nothing of ours to change. */
+export class RefreshIntervalError extends Error {}
+
+export interface RefreshIntervalResult {
+  settingsFile: string;
+  backup: string | null;
+  /** The value now in settings.json; null = refresh only on session events. */
+  refreshInterval: number | null;
+  unchanged: boolean;
+}
+
+/**
+ * Set (whole seconds, 1–3600) or clear (null) `refreshInterval` on our statusLine entry. Only ever
+ * touches an entry that is ours: someone else's statusline is not ours to retime, and with none
+ * installed there is nothing to retime at all.
+ */
+export function setRefreshInterval(seconds: number | null): RefreshIntervalResult {
+  if (seconds !== null && (!Number.isInteger(seconds) || seconds < MIN_REFRESH_SECONDS || seconds > MAX_REFRESH_SECONDS)) {
+    throw new RefreshIntervalError(`refreshInterval must be a whole number of seconds from ${MIN_REFRESH_SECONDS} to ${MAX_REFRESH_SECONDS}, or null`);
+  }
+  const file = settingsPath();
+  const settings = readSettings(file);
+  const current = settings.statusLine;
+  if (!isOurStatusLine(current) || !isPlainObject(current)) throw new RefreshIntervalError("the statusline in settings.json is not claude-code-super-statusline's; apply it first");
+  const before = typeof current.refreshInterval === "number" ? current.refreshInterval : null;
+  if (before === seconds) return { settingsFile: file, backup: null, refreshInterval: seconds, unchanged: true };
+  const next: Record<string, unknown> = { ...current };
+  if (seconds === null) delete next.refreshInterval;
+  else next.refreshInterval = seconds;
+  settings.statusLine = next;
+  const backup = writeSettings(file, settings);
+  return { settingsFile: file, backup, refreshInterval: seconds, unchanged: false };
 }
 
 /**
