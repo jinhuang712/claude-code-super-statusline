@@ -65,7 +65,7 @@ The preview shows your real session; hover a choice to try it before you click. 
 | Added directories | Folders added with `/add-dir` |
 | Repository | `owner/name` of the repo |
 | Git branch | Branch, uncommitted changes, ahead/behind |
-| Lines changed | Lines added / removed, by this session or uncommitted |
+| Lines changed | Lines added / removed, by this session or uncommitted; optionally the changed files (added, modified, deleted, renamed) |
 | Pull request | The branch's open PR and its review state |
 
 **Model · Context**

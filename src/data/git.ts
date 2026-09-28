@@ -16,10 +16,16 @@ export interface TrackedFile {
 }
 
 export interface FileStats {
+  /** Modified files, renames and copies included (so git.branch's `!N` keeps its meaning). */
   modified: number;
   added: number;
   deleted: number;
   untracked: number;
+  /**
+   * claude-code-super-statusline: the renames and copies inside `modified`, for git.linesChanged's
+   * file breakdown. Optional because a status cached by an older version doesn't carry it.
+   */
+  renamed?: number;
   trackedFiles: TrackedFile[];
 }
 
@@ -207,7 +213,7 @@ function buildGitHubRefUrl(httpsBase: string, ref: string): string {
  * Status codes: M=modified, A=added, D=deleted, ??=untracked
  */
 function parseFileStats(porcelainOutput: string): FileStats {
-  const stats: FileStats = { modified: 0, added: 0, deleted: 0, untracked: 0, trackedFiles: [] };
+  const stats: FileStats = { modified: 0, added: 0, deleted: 0, untracked: 0, renamed: 0, trackedFiles: [] };
   const lines = porcelainOutput.split('\n').filter(Boolean);
 
   for (const line of lines) {
@@ -229,6 +235,7 @@ function parseFileStats(porcelainOutput: string): FileStats {
     } else if (index === 'M' || worktree === 'M' || index === 'R' || index === 'C') {
       // M=modified, R=renamed (counts as modified), C=copied (counts as modified)
       stats.modified++;
+      if (index === 'R' || index === 'C') stats.renamed = (stats.renamed ?? 0) + 1;
       // For renames, git porcelain shows "old -> new"; take the destination path
       const fullPath = parsePorcelainPath(line.slice(2).trimStart().split(' -> ').pop() ?? line.slice(2).trimStart());
       stats.trackedFiles.push({ basename: fullPath.split('/').pop() ?? fullPath, fullPath, type: 'modified' });

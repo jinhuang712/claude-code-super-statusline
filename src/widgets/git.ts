@@ -1,4 +1,5 @@
-import { defineWidget } from "../core/types.js";
+import { defineWidget, type Ctx, type Segment, type WidgetApi } from "../core/types.js";
+import type { FileStats } from "../data/git.js";
 import { stdin } from "./_shared.js";
 
 export const gitBranch = defineWidget<{ showDirty: boolean; showAheadBehind: boolean; showFileStats: boolean; prefix: string; parens: boolean; link: boolean }>({
@@ -90,34 +91,72 @@ export const gitPr = defineWidget<{ showState: boolean }>({
   },
 });
 
-export const gitLines = defineWidget<{ source: "session" | "worktree"; hideZero: boolean }>({
+/**
+ * The changed-files part of git.linesChanged, from `git status`: "4 files" or "4 files A1 M2 D1 R1".
+ * Always the worktree, whatever `source` the lines use: Claude Code reports lines per session but no
+ * files. A/M/D/R are git's own status letters; untracked files count as added (they are new files
+ * that just haven't been `git add`ed), and M excludes renames so each file is counted once.
+ */
+function changedFiles(f: FileStats | undefined, breakdown: boolean, api: WidgetApi): Segment[] {
+  if (!f) return [];
+  const renamed = f.renamed ?? 0;
+  const parts: Array<[string, number, string]> = [
+    ["A", f.added + f.untracked, "ok"],
+    ["M", Math.max(0, f.modified - renamed), "warn"],
+    ["D", f.deleted, "crit"],
+    ["R", renamed, "accent"],
+  ];
+  const total = parts.reduce((n, [, c]) => n + c, 0);
+  if (total === 0) return [];
+  const segs = [api.seg(`${total} ${total === 1 ? "file" : "files"}`, { fg: "muted" })];
+  if (breakdown) for (const [letter, c, fg] of parts) if (c) segs.push(api.seg(` ${letter}${c}`, { fg }));
+  return segs;
+}
+
+export const gitLines = defineWidget<{ source: "session" | "worktree"; files: "off" | "total" | "breakdown"; hideZero: boolean }>({
   id: "git.linesChanged",
   name: "Lines changed",
-  description: "Lines added/removed: either what this session edited (Claude Code's count) or what is uncommitted in the worktree (git diff HEAD).",
+  description: "Lines added/removed: either what this session edited (Claude Code's count) or what is uncommitted in the worktree (git diff HEAD). Can add the changed files from git status.",
   category: "git",
   sample: "+156 -23",
   schema: {
     type: "object",
     properties: {
       source: { type: "string", enum: ["session", "worktree"], default: "session", title: "Count" },
+      files: {
+        type: "string",
+        enum: ["off", "total", "breakdown"],
+        default: "off",
+        title: "Changed files",
+        description: "From git status: 4 files, or 4 files A1 M2 D1 R1 (added, modified, deleted, renamed)",
+      },
       hideZero: { type: "boolean", default: true, title: "Hide when both are zero" },
     },
   },
-  defaults: { source: "session", hideZero: true },
+  defaults: { source: "session", files: "off", hideZero: true },
   render(ctx, o, api) {
-    let add = 0;
-    let del = 0;
-    if (o.source === "worktree") {
-      // No repo → no worktree diff: hide instead of emitting a bare `—`.
-      if (!ctx.gitStatus) return null;
-      add = ctx.gitStatus.lineDiff?.added ?? 0;
-      del = ctx.gitStatus.lineDiff?.deleted ?? 0;
-    } else {
-      const c = stdin(ctx).cost;
-      add = Math.max(0, (c?.total_lines_added ?? 0) - (ctx.reset?.linesAdded ?? 0));
-      del = Math.max(0, (c?.total_lines_removed ?? 0) - (ctx.reset?.linesRemoved ?? 0));
-    }
-    if (o.hideZero && !add && !del) return null;
-    return [api.seg(`+${add}`, { fg: "ok" }), api.seg(" "), api.seg(`-${del}`, { fg: "crit" })];
+    const lines = renderLines(ctx, o, api);
+    const files = o.files === "off" ? [] : changedFiles(ctx.gitStatus?.fileStats, o.files === "breakdown", api);
+    if (!lines && !files.length) return null;
+    if (!lines) return files;
+    return files.length ? [...lines, api.seg(" · ", { fg: "muted" }), ...files] : lines;
   },
 });
+
+/** The +added -removed part; null when there is nothing to show (see hideZero). */
+function renderLines(ctx: Ctx, o: { source: "session" | "worktree"; hideZero: boolean }, api: WidgetApi): Segment[] | null {
+  let add = 0;
+  let del = 0;
+  if (o.source === "worktree") {
+    // No repo → no worktree diff: hide instead of emitting a bare `—`.
+    if (!ctx.gitStatus) return null;
+    add = ctx.gitStatus.lineDiff?.added ?? 0;
+    del = ctx.gitStatus.lineDiff?.deleted ?? 0;
+  } else {
+    const c = stdin(ctx).cost;
+    add = Math.max(0, (c?.total_lines_added ?? 0) - (ctx.reset?.linesAdded ?? 0));
+    del = Math.max(0, (c?.total_lines_removed ?? 0) - (ctx.reset?.linesRemoved ?? 0));
+  }
+  if (o.hideZero && !add && !del) return null;
+  return [api.seg(`+${add}`, { fg: "ok" }), api.seg(" "), api.seg(`-${del}`, { fg: "crit" })];
+}

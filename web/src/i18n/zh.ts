@@ -412,6 +412,7 @@ export const zh: Messages = {
       breakdown: "显示 in/out/cache 明细",
       style: "明细样式",
       source: "统计口径",
+      files: "改动文件",
       max: "最多显示",
       showModel: "显示模型",
       showDescription: "显示描述",
@@ -456,6 +457,7 @@ export const zh: Messages = {
     },
     fieldHints: {
       name: "必填，比如 AWS_PROFILE；不填就不显示",
+      files: "取自 git status：A 新增（含未 add 的新文件）· M 修改 · D 删除 · R 重命名",
       effortStyle: "符号对应：○ low · ◔ medium · ◑ high · ◕ xhigh · ● max",
     },
     enums: {
@@ -491,6 +493,7 @@ export const zh: Messages = {
       "model.badge.joiner": { space: "空格", dot: "圆点 ·" },
       "context.bar.value": { percent: "已用 %", remaining: "剩余 %" },
       "git.linesChanged.source": { session: "本会话改过的", worktree: "工作区未提交的" },
+      "git.linesChanged.files": { off: "不显示", total: "文件数（4 files）", breakdown: "按类型（A1 M2 D1 R1）" },
       "project.path.dir": { current: "当前目录", launch: "启动 Claude Code 的目录" },
     },
   },

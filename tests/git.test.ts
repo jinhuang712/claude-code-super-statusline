@@ -2,7 +2,9 @@ import { beforeAll, describe, expect, test } from "bun:test";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { getGitStatus } from "../src/data/git.ts";
-import { runGit as git } from "./helpers.ts";
+import { buildContext } from "../src/core/context.ts";
+import { render as renderLayout } from "../src/core/layout.ts";
+import { ensureBuiltins, plainConfig, runGit as git } from "./helpers.ts";
 
 /*
   getGitStatus now starts its git commands concurrently. These tests pin the observable result on a
@@ -64,5 +66,45 @@ describe("getGitStatus", () => {
     const plain = path.join(root, "plain");
     fs.mkdirSync(plain, { recursive: true });
     expect(await getGitStatus(plain)).toBeNull();
+  });
+});
+
+/*
+  git.linesChanged `files`: the changed files from git status next to the line counts. Renames get
+  their own letter (they used to be folded into modified), untracked files count as added.
+*/
+describe("git.linesChanged files", () => {
+  const repo2 = path.join(root, "files");
+  beforeAll(() => {
+    fs.mkdirSync(repo2, { recursive: true });
+    git(repo2, "init", "-q");
+    for (const f of ["keep.txt", "edit.txt", "gone.txt", "old.txt"]) fs.writeFileSync(path.join(repo2, f), `${f}\n`);
+    git(repo2, "add", ".");
+    git(repo2, "commit", "-q", "-m", "base");
+    fs.writeFileSync(path.join(repo2, "edit.txt"), "edit.txt\nmore\n"); // M, +1
+    fs.rmSync(path.join(repo2, "gone.txt")); // D, -1
+    git(repo2, "mv", "old.txt", "new.txt"); // R
+    fs.writeFileSync(path.join(repo2, "staged.txt"), "s\n");
+    git(repo2, "add", "staged.txt"); // A, +1
+    fs.writeFileSync(path.join(repo2, "fresh.txt"), "f\n"); // ?? → counts as added
+  });
+
+  test("renames are counted apart from modifications", async () => {
+    const s = await getGitStatus(repo2);
+    expect(s!.fileStats).toMatchObject({ modified: 2, renamed: 1, added: 1, untracked: 1, deleted: 1 });
+  });
+
+  const render = async (files: string) => {
+    ensureBuiltins();
+    const config = { ...plainConfig([{ left: [{ widget: "git.linesChanged", options: { source: "worktree", files } }] }]), git: { enabled: true, cacheMs: 0 } };
+    const ctx = await buildContext({ workspace: { current_dir: repo2 } } as never, config, { columns: 0, now: Date.now() });
+    return renderLayout(config, ctx).lines[0] ?? "";
+  };
+
+  test("off (the default) shows only the lines; total and breakdown add the files", async () => {
+    const lines = await render("off");
+    expect(lines).toMatch(/^\+\d+ -\d+$/);
+    expect(await render("total")).toBe(`${lines} · 5 files`);
+    expect(await render("breakdown")).toBe(`${lines} · 5 files A2 M1 D1 R1`);
   });
 });
