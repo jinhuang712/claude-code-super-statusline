@@ -2,6 +2,23 @@
 
 Versions follow the plugin manifest (`.claude-plugin/plugin.json`); marketplace installs update when it changes.
 
+## 0.5.2 — 2026-09-28
+
+- **Lines changed is now Changes, and it holds everything that changed.** Besides the lines added / removed
+  (which can now be turned off), it shows the changed files from `git status` — *Count* (`4 files`), *Letters*
+  (`4 files A1 M2 D1 R1`: added, modified, deleted, renamed; new untracked files count as added) or *Symbols*
+  (`!2 +1 ✘1 ?1`, as Git branch showed them, now with `→N` for renames) — and the commits ahead of / behind the
+  upstream (`↑2 ↓1`).
+- **Git branch keeps only the branch.** Its *Show ↑N ↓N* and *Show !M +A ✘D ?U* moved to Changes. Existing
+  statuslines are carried over on the first read: a Changes widget on the same line takes them, otherwise one showing
+  only them is added right after the branch. Minimal, Standard and the default layout include that widget too, so
+  nothing disappears and a preset layout still matches its preset. On a line where Changes sits in another zone,
+  ↑N ↓N and the file stats now show where Changes is; drag it next to the branch to have them there again.
+- **The statusline refreshes on a timer.** Claude Code re-runs a statusline only when something happens in the
+  session, so a change saved in the page used to show up only after the next message. Applying the statusline now
+  sets it to refresh every 5 seconds as well, and *⋯ → Refresh* changes that (1, 5, 10 or 30 s, or only on new
+  messages). A statusline applied by an earlier version has no timer until you pick one there.
+
 ## 0.5.1 — 2026-09-28
 
 - **Session tokens counts subagents.** Claude Code writes each subagent's (Task / Agent tool, workflow agents too)
