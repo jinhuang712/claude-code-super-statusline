@@ -158,6 +158,11 @@ interface State {
   moveWidget(from: Selection, toLine: number, toZone: Zone, toIndex?: number): void;
   reorder(line: number, zone: Zone, from: number, to: number): void;
   addLine(): void;
+  /**
+   * Insert an empty line so it becomes line `at` (0-based); `at` = the line count appends, as
+   * addLine does. An open options panel stays on its widget, which may have moved down one line.
+   */
+  insertLine(at: number): void;
   removeLine(i: number): void;
   moveLine(i: number, dir: -1 | 1): void;
   updateAt(sel: Selection, mutate: (w: WidgetInstance) => void): void;
@@ -394,9 +399,17 @@ export const useStore = create<State>((set, get) => {
     },
 
     addLine() {
+      get().insertLine(get().config!.lines.length);
+    },
+
+    insertLine(at) {
       get().setConfig((c) => {
-        c.lines.push({ left: [], right: [] });
+        c.lines.splice(at, 0, { left: [], right: [] });
       });
+      // Selections are line indexes: without the shift, the open panel would jump to the widget
+      // that now sits where the edited one used to be (or close, on the new empty line).
+      const sel = get().selection;
+      if (sel && sel.line >= at) set({ selection: { ...sel, line: sel.line + 1 } });
     },
 
     removeLine(i) {

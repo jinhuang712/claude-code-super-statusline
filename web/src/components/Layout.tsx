@@ -193,6 +193,26 @@ function LineMenu({ line, index, total }: { line: LineConfig; index: number; tot
               ↓ {t.layout.moveDown}
             </button>
             <button
+              className="btn"
+              onClick={() => {
+                s.insertLine(index);
+                close();
+              }}
+            >
+              <Icon name="plus" size={12} />
+              {t.layout.insertAbove}
+            </button>
+            <button
+              className="btn"
+              onClick={() => {
+                s.insertLine(index + 1);
+                close();
+              }}
+            >
+              <Icon name="plus" size={12} />
+              {t.layout.insertBelow}
+            </button>
+            <button
               className="btn btn-danger"
               onClick={() => {
                 s.removeLine(index);
@@ -253,9 +273,33 @@ function Row({ line, index, total, withCenter, at, caret }: { line: LineConfig; 
   // The open widget's options unfold under its own line, so what is being edited stays next to it.
   const open = useStore((s) => s.selection?.line === index && widgetAt(s, s.selection) !== null);
   const removeLine = useStore((s) => s.removeLine);
+  const insertLine = useStore((s) => s.insertLine);
   const t = useT();
   return (
     <div className="linerow" data-open={open}>
+      {/*
+        Mouse shortcuts for "Insert line above / below": a ⊕ on the row's top and bottom edge, in
+        the gutter, shown while the row is hovered. At a boundary the row above's "below" and the
+        row below's "above" sit on the same spot and do the same thing. They are skipped by Tab
+        and hidden from screen readers on purpose — two more tab stops per line would be noise, and
+        the line-number menu offers the same two actions to keyboard and screen-reader users.
+      */}
+      {(["above", "below"] as const).map((edge) => (
+        <button
+          key={edge}
+          type="button"
+          className="line-insert"
+          data-edge={edge}
+          tabIndex={-1}
+          aria-hidden
+          title={t.layout.insertHere}
+          onClick={() => insertLine(edge === "above" ? index : index + 1)}
+        >
+          <span className="line-insert-dot">
+            <Icon name="plus" size={10} />
+          </span>
+        </button>
+      ))}
       <div className="linerow-gutter">
         <LineMenu line={line} index={index} total={total} />
       </div>

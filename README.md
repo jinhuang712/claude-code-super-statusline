@@ -30,6 +30,8 @@ Start from a preset, then arrange it by hand — the preview redraws as you go:
 * **Drag a widget** from *Unused widgets* onto any line, left or right.
 * **Drag it again** to reorder it, or to move it to another line — or focus it and press <kbd>Alt</kbd> + arrow keys.
 * **Drag it back** to the tray to remove it (or click it and choose *Remove from statusline*).
+- **Insert a line** anywhere: hover a line and click the ⊕ on its top or bottom edge, or click its line number and
+  choose _Insert line above_ / _below_ (the same menu moves and deletes lines).
 
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="docs/images/dnd-light.gif">

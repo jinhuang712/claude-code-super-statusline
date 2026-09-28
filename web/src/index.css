@@ -794,6 +794,84 @@ input[type="checkbox"] {
   justify-content: center;
   height: 100%;
 }
+/*
+  The ⊕ that inserts a line at a row's top or bottom edge (Layout.tsx, Row). It is a thin strip
+  across the whole row, centred on the gap between two rows, so the clay rule it draws on hover
+  shows exactly where the new line will go; the dot sits in the gutter, over the line numbers'
+  column. It's positioned on .linerow rather than the gutter so that with an options panel open
+  the bottom ⊕ sits under the panel — where "below this line" really inserts.
+*/
+.linerow {
+  position: relative;
+}
+.line-insert {
+  --gap-half: calc(0.375rem / 2); /* half of .linelist's row gap: the boundary between two rows */
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  height: 0.75rem;
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s;
+}
+.line-insert[data-edge="above"] {
+  top: calc(-1 * var(--gap-half));
+  transform: translateY(-50%);
+}
+.line-insert[data-edge="below"] {
+  bottom: calc(-1 * var(--gap-half));
+  transform: translateY(50%);
+}
+/* Hover only: while dragging, the rows are drop targets and a stray ⊕ would be in the way. */
+.linelist:not([data-dragging="true"]) .linerow:hover > .line-insert {
+  opacity: 1;
+  pointer-events: auto;
+}
+.line-insert-dot {
+  /* Centred on the 1.75rem gutter column. */
+  margin-left: calc((1.75rem - 1.125rem) / 2);
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--bg);
+  color: var(--muted);
+  transition:
+    color 0.1s,
+    border-color 0.1s;
+}
+/* The rule from the dot to the row's right edge: where the new line lands. */
+.line-insert::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  margin-left: 0.25rem;
+  border-radius: 1px;
+  background: var(--clay);
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.line-insert:hover .line-insert-dot {
+  color: var(--fg);
+  border-color: var(--clay);
+}
+.line-insert:hover::after {
+  opacity: 1;
+}
+/* No hover on touch screens: there the line-number menu's Insert above / below is the way. */
+@media (hover: none) {
+  .line-insert {
+    display: none;
+  }
+}
+
 /* The line number doubles as the line's menu button. */
 .linerow-num {
   width: 1.75rem;
@@ -1019,10 +1097,14 @@ input[type="checkbox"] {
   gap: var(--sp-2);
   padding: var(--sp-2) 0.625rem;
 }
+/* Two columns so the actions pair up — move up / down, insert above / below — with Delete alone below. */
 .linemenu-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 0.375rem;
+}
+.linemenu-actions > .btn-danger {
+  justify-self: start;
 }
 .linemenu-field {
   display: flex;
