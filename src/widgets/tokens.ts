@@ -88,7 +88,7 @@ export const tokensCurrent = defineWidget<{ label: string | null; showWindow: bo
 export const tokensSpeed = defineWidget<{ label: string | null }>({
   id: "tokens.outputSpeed",
   name: "Output speed",
-  description: "Output speed of the latest response, in tokens per second (end to end, so time to first token is included; replies under 200 tokens are skipped).",
+  description: "Output speed of the latest response, main chain or subagent, in tokens per second (end to end, so time to first token is included; replies under 200 tokens are skipped).",
   category: "usage",
   sample: "42 tok/s",
   schema: { type: "object", properties: { label: { ...labelSchema, default: null } } },

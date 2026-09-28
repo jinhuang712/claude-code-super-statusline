@@ -335,7 +335,7 @@ export const zh: Messages = {
       "usage.single": "只显示一个用量窗口，适合放窄的位置。",
       "tokens.session": "本次会话累计 tokens（含子 agent），可展开 in / out / cache 明细。",
       "tokens.current": "当前上下文窗口里的 tokens 数。",
-      "tokens.outputSpeed": "输出速度 tok/s，流式输出时才有值。",
+      "tokens.outputSpeed": "最近一次回复（含子 agent）的输出速度 tok/s，端到端计时，200 tokens 以下的回复不计。",
       "session.duration": "会话已进行的时长。",
       "session.started": "会话开始的时间。",
       "session.lastReply": "距上一次回复过了多久。",

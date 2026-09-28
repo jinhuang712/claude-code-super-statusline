@@ -1,5 +1,6 @@
 /**
- * Output speed of the latest model response, measured from the transcript.
+ * Output speed of the latest model response, measured from the transcript (and, through
+ * latestResponseSpeed, from the session's subagent transcripts).
  *
  * Why not the stdin-based tracker claude-hud uses: it needs two statusline renders 0.5–2 s apart
  * while `current_usage.output_tokens` grows. Claude Code re-runs the statusline when a *new message
@@ -21,6 +22,7 @@
  * 100 MB transcripts.
  */
 import * as fs from "node:fs";
+import { listSubagentFiles } from "./subagents.js";
 
 /** Enough for the last several responses including large tool results; one read, no scan of the file. */
 const TAIL_BYTES = 256 * 1024;
@@ -62,8 +64,11 @@ function tailLines(file: string, bytes: number): string[] {
   }
 }
 
-/** The latest response of at least `minTokens` output tokens, or null when none is in the tail. */
-export function lastResponseSpeed(transcriptPath: string | undefined, minTokens = MIN_RESPONSE_TOKENS): ResponseSpeed | null {
+/**
+ * The latest response of at least `minTokens` output tokens, or null when none is in the tail.
+ * `sidechain: true` reads a subagent's own transcript, where every record is marked isSidechain.
+ */
+export function lastResponseSpeed(transcriptPath: string | undefined, minTokens = MIN_RESPONSE_TOKENS, sidechain = false): ResponseSpeed | null {
   if (!transcriptPath) return null;
   let lastUserAt = 0;
   // Responses in the order they appear; each remembers when its request started.
@@ -75,8 +80,9 @@ export function lastResponseSpeed(transcriptPath: string | undefined, minTokens 
     } catch {
       continue;
     }
-    // Subagent chatter interleaves with the main chain in older transcripts; only the main chain counts.
-    if (e.isSidechain || !e.timestamp) continue;
+    // Subagent chatter interleaves with the main chain in older transcripts: timing across two chains
+    // would pair one chain's request with the other's response, so only the file's own chain counts.
+    if (Boolean(e.isSidechain) !== sidechain || !e.timestamp) continue;
     const at = Date.parse(e.timestamp);
     if (!Number.isFinite(at)) continue;
     if (e.type === "user") {
@@ -101,4 +107,24 @@ export function lastResponseSpeed(transcriptPath: string | undefined, minTokens 
     if (r.out >= minTokens && ms > 0) return { tokensPerSecond: r.out / (ms / 1000), outputTokens: r.out, durationMs: ms, finishedAt: r.end };
   }
   return null;
+}
+
+/**
+ * The latest long-enough response of the session, main chain or any subagent (see subagents.ts for
+ * where their transcripts live). Each file is timed on its own, so parallel agents never pair one
+ * agent's request with another's response.
+ *
+ * Subagent files are visited newest first and the walk stops at the first one last written before
+ * the best response found so far: a response can't finish after its file was last written, so no
+ * older file can win. That usually means one or two tail reads, even with hundreds of files.
+ */
+export function latestResponseSpeed(transcriptPath: string | undefined, minTokens = MIN_RESPONSE_TOKENS): ResponseSpeed | null {
+  let best = lastResponseSpeed(transcriptPath, minTokens);
+  const files = listSubagentFiles(transcriptPath).sort((a, b) => b.mtimeMs - a.mtimeMs);
+  for (const f of files) {
+    if (best && f.mtimeMs < best.finishedAt) break;
+    const r = lastResponseSpeed(f.file, minTokens, true);
+    if (r && (!best || r.finishedAt > best.finishedAt)) best = r;
+  }
+  return best;
 }
