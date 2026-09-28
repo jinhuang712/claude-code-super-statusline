@@ -163,6 +163,8 @@ export const api = {
     return j<{ settingsFile: string; backup: string | null }>(res);
   },
   uninstall: () => post("/api/uninstall", {}).then(j<{ settingsFile: string; restored: unknown; removed: boolean }>),
+  /** Set our statusLine's refreshInterval in seconds, or clear it with null (refresh on session events only). */
+  setRefreshInterval: (seconds: number | null) => post("/api/refresh-interval", { seconds }).then(j<{ settingsFile: string; refreshInterval: number | null; unchanged: boolean }>),
   reset: (sessionId?: string) => post("/api/reset", { sessionId }).then(j<{ sessionId: string; baseline: { at: number } }>),
   undoReset: (sessionId: string) => post("/api/reset", { sessionId, undo: true }).then(j<{ ok: true }>),
 };

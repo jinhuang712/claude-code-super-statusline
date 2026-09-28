@@ -125,6 +125,58 @@ function RestoreItem({ close }: { close: () => void }) {
   );
 }
 
+/** The intervals offered, in seconds; null = only on session events. 1 is Claude Code's minimum. */
+const REFRESH_CHOICES: Array<number | null> = [null, 1, 5, 10, 30];
+
+/**
+ * "Refresh: every 5 s ▸": Claude Code's statusLine.refreshInterval. Claude Code re-runs the
+ * statusline only on session events (a new message, a mode change…), so without a timer a save here
+ * shows up only after the next message. Opens in place, like Stop using, rather than a flyout
+ * submenu: a flyout would leave the popover's bounds on a 390px screen.
+ */
+function RefreshItem() {
+  const t = useT();
+  const plan = useStore((s) => s.installPlan);
+  const setRefreshInterval = useStore((s) => s.setRefreshInterval);
+  const [open, setOpen] = useState(false);
+  const raw = (plan?.current as { refreshInterval?: unknown } | null)?.refreshInterval;
+  const current = typeof raw === "number" && raw > 0 ? raw : null;
+  // A value set by hand in settings.json (say 3) is shown as one more choice rather than hidden.
+  const choices = current === null || REFRESH_CHOICES.includes(current) ? REFRESH_CHOICES : [...REFRESH_CHOICES, current];
+  const label = (n: number | null) => (n === null ? t.refresh.optionEvents : t.refresh.optionEvery(n));
+  return (
+    <>
+      <button className="menu-item menu-expand" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span className="menu-expand-row">
+          {t.refresh.row(current === null ? t.refresh.onEvents : t.refresh.every(current))}
+          <Icon name="chevron" size={12} className="menu-expand-chevron" />
+        </span>
+      </button>
+      {open && (
+        <div className="menu-confirm" role="group" aria-label={t.refresh.title}>
+          <span className="hint">{t.refresh.hint}</span>
+          <div className="choices">
+            {choices.map((n) => (
+              <button
+                key={String(n)}
+                className="choice"
+                data-active={current === n}
+                aria-pressed={current === n}
+                onClick={() => {
+                  // Stays open: the pressed choice moving is the confirmation, and the toast says what it means.
+                  if (current !== n) void setRefreshInterval(n);
+                }}
+              >
+                {label(n)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 /** The header's ⋯ menu: actions that matter rarely (repairs, the way out, debugging), off the main surface. */
 function HeaderMenu({ close, openDiagnostics }: { close: () => void; openDiagnostics: () => void }) {
   const t = useT();
@@ -154,6 +206,8 @@ function HeaderMenu({ close, openDiagnostics }: { close: () => void; openDiagnos
             from the server's path: a project that still has the pre-0.4.0 claude-code-ssp.json saves there. */}
         <span className="hint mono">.claude/{project?.path?.split(/[\\/]/).pop() ?? "claude-code-super-statusline.json"}</span>
       </button>
+      {/* Only our own entry can be retimed; before Apply there is nothing in settings.json to change. */}
+      {s.installed === true && <RefreshItem />}
       <button className="menu-item" onClick={run(openDiagnostics)}>
         {t.doctor.title}
       </button>

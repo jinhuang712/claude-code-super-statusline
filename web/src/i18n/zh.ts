@@ -246,6 +246,16 @@ export const zh: Messages = {
     cancel: "取消",
   },
 
+  refresh: {
+    title: "刷新",
+    row: (value) => `刷新：${value}`,
+    every: (n) => `每 ${n} 秒`,
+    onEvents: "仅在有新消息时",
+    hint: "除了新消息，Claude Code 还会按这个间隔重跑状态栏，保存的改动和时钟不用等新消息就能显示。写入 settings.json。",
+    optionEvents: "仅在有新消息时",
+    optionEvery: (n) => `每 ${n} 秒`,
+  },
+
   prefs: {
     appearance: "外观",
     system: "跟随系统",
@@ -266,6 +276,9 @@ export const zh: Messages = {
     restored: "已换回你原来的状态栏，新开一个 Claude Code 会话即可看到。",
     uninstalled: "已从 settings.json 移除，Claude Code 会恢复默认状态栏。",
     uninstallFailed: (e) => `恢复失败：${e}`,
+    refreshSet: (n) => `状态栏现在每 ${n} 秒刷新一次，有新消息时也会刷新。`,
+    refreshOff: "状态栏现在只在有新消息时刷新。",
+    refreshFailed: (e) => `刷新间隔修改失败：${e}`,
   },
 
   widgets: {

@@ -261,6 +261,18 @@ export const en = {
     cancel: "Cancel",
   },
 
+  /** The ⋯ menu's refresh timer: statusLine.refreshInterval in settings.json. */
+  refresh: {
+    title: "Refresh",
+    /** The menu row: the label with its current value (the colon differs per language). */
+    row: (value: string) => `Refresh: ${value}`,
+    every: (n: number) => `every ${n} s`,
+    onEvents: "new messages only",
+    hint: "Claude Code also re-runs the statusline on this timer, so saved changes and the clock show up without a new message. Written to settings.json.",
+    optionEvents: "Only on new messages",
+    optionEvery: (n: number) => `Every ${n} s`,
+  },
+
   /** Viewer preferences in the header menu (per browser, never saved to the config). */
   prefs: {
     appearance: "Appearance",
@@ -282,6 +294,9 @@ export const en = {
     restored: "Your previous statusline is back. Open a new Claude Code session to see it.",
     uninstalled: "Removed from settings.json. Claude Code shows its default statusline again.",
     uninstallFailed: (e: string) => `Couldn't restore: ${e}`,
+    refreshSet: (n: number) => `The statusline now refreshes every ${n} s, and on every new message.`,
+    refreshOff: "The statusline now refreshes only when a new message arrives.",
+    refreshFailed: (e: string) => `Couldn't change the refresh: ${e}`,
   },
 
   widgets: {

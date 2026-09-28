@@ -992,6 +992,26 @@ input[type="checkbox"] {
 .menu-link {
   color: var(--fg-2);
 }
+/* A row that opens its choices underneath it (Refresh): the chevron turns down while open, as in Style. */
+.menu-expand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  width: 100%;
+}
+.menu-expand-chevron {
+  flex: none;
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+.menu-expand[aria-expanded="true"] .menu-expand-chevron {
+  transform: rotate(90deg);
+}
+/* On the popover, --chip is the popover's own fill: without an edge the unpicked choices read as text. */
+.menu-confirm .choice {
+  border-color: var(--line);
+}
 /* "Stop using": the second step, in place of the item, says what happens before anything does. */
 .menu-confirm {
   display: flex;

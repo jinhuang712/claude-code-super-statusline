@@ -47,6 +47,14 @@ claude plugin update super-statusline@claude-code-super-statusline
 
 Then restart Claude Code (or run `/reload-plugins` in it). Installed from a local checkout? `git pull` there.
 
+## When changes show up
+
+Claude Code re-runs the statusline when something happens in the session (a new message, a mode
+change) and, on top of that, on a timer. Applying the statusline sets that timer to every 5 seconds
+(`refreshInterval` in `~/.claude/settings.json`), so a change saved in the page shows up within a
+few seconds. Change it under *⋯ → Refresh*, or choose *Only on new messages* to turn the timer off.
+A statusline applied by an earlier version has no timer until you pick one there.
+
 ## If you already have a statusline
 
 The page asks before replacing it. To go back later, open the page and choose

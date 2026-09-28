@@ -171,6 +171,8 @@ interface State {
   install(confirmReplace?: boolean): Promise<void>;
   /** Stop using this statusline: restores the one it replaced, or removes ours. */
   uninstall(): Promise<void>;
+  /** Retime Claude Code's statusline refresh (seconds; null = only on session events). */
+  setRefreshInterval(seconds: number | null): Promise<void>;
   dismissConsent(): void;
   resetCounters(): Promise<void>;
   refreshPreview(): Promise<void>;
@@ -527,6 +529,16 @@ export const useStore = create<State>((set, get) => {
         set({ installed: false, installPlan: await api.installPlan().catch(() => null), toast: r.restored ? tr().toast.restored : tr().toast.uninstalled });
       } catch (err) {
         set({ toast: tr().toast.uninstallFailed(err instanceof Error ? err.message : String(err)) });
+      }
+    },
+
+    async setRefreshInterval(seconds) {
+      try {
+        await api.setRefreshInterval(seconds);
+        // The menu reads the current value from the plan, so reload it rather than patching it locally.
+        set({ installPlan: await api.installPlan().catch(() => get().installPlan), toast: seconds === null ? tr().toast.refreshOff : tr().toast.refreshSet(seconds) });
+      } catch (err) {
+        set({ toast: tr().toast.refreshFailed(err instanceof Error ? err.message : String(err)) });
       }
     },
 
