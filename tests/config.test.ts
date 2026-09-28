@@ -2,7 +2,8 @@ import { afterAll, describe, expect, test } from "bun:test";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { DEFAULT_CONFIG, loadEffectiveConfig, mergeConfig, normalizeConfig, projectConfigPath, writeProjectConfig } from "../src/core/config.ts";
+import { DEFAULT_CONFIG, loadEffectiveConfig, mergeConfig, migrateGitBranchParts, normalizeConfig, projectConfigPath, writeProjectConfig } from "../src/core/config.ts";
+import type { FooterConfig } from "../src/core/types.ts";
 import { APP_NAME, LEGACY_APP_NAME } from "../src/data/app-name.ts";
 
 describe("mergeConfig", () => {
@@ -62,6 +63,51 @@ describe("legacy per-widget colorMode", () => {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+/*
+  Config version 2 moved ahead/behind (on by default) and the file stats from git.branch to Changes
+  (git.linesChanged). A version-1 statusline must look the same after the upgrade, and the move must
+  happen once: a Changes widget removed later must not come back.
+*/
+describe("migrateGitBranchParts (config version 2)", () => {
+  const branch = (options?: Record<string, unknown>) => ({ widget: "git.branch", ...(options ? { options } : {}) });
+  // Typed as a plain config, so each case's literal input type doesn't narrow the result.
+  const mig = (v: unknown) => migrateGitBranchParts(v as Partial<FooterConfig>);
+
+  test("a lone branch gets a Changes widget with only ↑N ↓N right after it (the old default)", () => {
+    const m = mig({ version: 1, lines: [{ left: [{ widget: "project.path" }, branch(), { widget: "model.badge" }] }] });
+    expect(m.version).toBe(2);
+    expect(m.lines![0]!.left).toEqual([{ widget: "project.path" }, { widget: "git.branch" }, { widget: "git.linesChanged", options: { lines: false, aheadBehind: true } }, { widget: "model.badge" }]);
+  });
+
+  test("file stats become files: symbols; both off moves nothing and only strips the options", () => {
+    expect(mig({ version: 1, lines: [{ left: [branch({ showFileStats: true, showAheadBehind: false, prefix: "g:" })] }] }).lines![0]!.left).toEqual([
+      { widget: "git.branch", options: { prefix: "g:" } },
+      { widget: "git.linesChanged", options: { lines: false, files: "symbols" } },
+    ]);
+    expect(mig({ version: 1, lines: [{ left: [branch({ showAheadBehind: false })] }] }).lines![0]!.left).toEqual([{ widget: "git.branch", options: {} }]);
+  });
+
+  test("a Changes widget on the same line (any zone) takes them, keeping its own choices", () => {
+    const m = mig({
+      version: 1,
+      lines: [{ left: [branch({ showFileStats: true })], right: [{ widget: "git.linesChanged", style: { bold: true }, options: { source: "worktree" } }] }],
+    });
+    expect(m.lines![0]!.left).toEqual([{ widget: "git.branch", options: {} }]);
+    expect(m.lines![0]!.right).toEqual([{ widget: "git.linesChanged", style: { bold: true }, options: { source: "worktree", aheadBehind: true, files: "symbols" } }]);
+    const own = mig({ version: 1, lines: [{ left: [branch({ showFileStats: true }), { widget: "git.linesChanged", options: { files: "letters", aheadBehind: false } }] }] });
+    expect(own.lines![0]!.left![1]).toEqual({ widget: "git.linesChanged", options: { files: "letters", aheadBehind: false } });
+  });
+
+  test("a version-2 layer is left alone, so a Changes widget removed on purpose stays removed", () => {
+    const v2 = { version: 2 as const, lines: [{ left: [branch()] }] };
+    expect(migrateGitBranchParts(v2)).toBe(v2);
+  });
+
+  test("a hand-written file without a version counts as version 1; normalizeConfig migrates too", () => {
+    expect(normalizeConfig({ lines: [{ left: [branch()] }] }).lines[0]!.left).toHaveLength(2);
   });
 });
 

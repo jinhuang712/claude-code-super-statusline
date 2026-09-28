@@ -64,8 +64,8 @@ The preview shows your real session; hover a choice to try it before you click. 
 | Worktree | The active git worktree, and the branch it came from |
 | Added directories | Folders added with `/add-dir` |
 | Repository | `owner/name` of the repo |
-| Git branch | Branch, uncommitted changes, ahead/behind |
-| Lines changed | Lines added / removed, by this session or uncommitted; optionally the changed files (added, modified, deleted, renamed) |
+| Git branch | Branch, with `*` when there are uncommitted changes |
+| Changes | Lines added / removed (by this session or uncommitted), the changed files (added, modified, deleted, renamed), commits ahead / behind |
 | Pull request | The branch's open PR and its review state |
 
 **Model · Context**

@@ -28,7 +28,7 @@ export interface ThemeDef {
   bar?: { filled: string; empty: string };
 }
 export interface FooterConfig {
-  version: 1;
+  version: 1 | 2;
   theme: string | ThemeDef;
   colorLevel: "auto" | "truecolor" | "256" | "16" | "none";
   separator: string;

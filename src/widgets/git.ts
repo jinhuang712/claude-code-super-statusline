@@ -2,24 +2,26 @@ import { defineWidget, type Ctx, type Segment, type WidgetApi } from "../core/ty
 import type { FileStats } from "../data/git.js";
 import { stdin } from "./_shared.js";
 
-export const gitBranch = defineWidget<{ showDirty: boolean; showAheadBehind: boolean; showFileStats: boolean; prefix: string; parens: boolean; link: boolean }>({
+/**
+ * The branch and its dirty marker. Ahead/behind and the file stats moved to Changes
+ * (git.linesChanged) in config version 2; old configs are carried over by migrateGitBranchParts.
+ */
+export const gitBranch = defineWidget<{ showDirty: boolean; prefix: string; parens: boolean; link: boolean }>({
   id: "git.branch",
   name: "Git branch",
-  description: "Branch with dirty marker, ahead/behind and file stats.",
+  description: "Branch with a dirty marker. Ahead/behind and file stats are in Changes.",
   category: "git",
-  sample: "git:(main*) ↑2 !3 +1",
+  sample: "git:(main*)",
   schema: {
     type: "object",
     properties: {
       prefix: { type: "string", default: "git:", title: "Prefix" },
       parens: { type: "boolean", default: true, title: "Branch in parentheses" },
       showDirty: { type: "boolean", default: true, title: "Show * when dirty" },
-      showAheadBehind: { type: "boolean", default: true, title: "Show ↑N ↓N" },
-      showFileStats: { type: "boolean", default: false, title: "Show !M +A ✘D ?U" },
       link: { type: "boolean", default: true, title: "Link branch to GitHub" },
     },
   },
-  defaults: { prefix: "git:", parens: true, showDirty: true, showAheadBehind: true, showFileStats: false, link: true },
+  defaults: { prefix: "git:", parens: true, showDirty: true, link: true },
   render(ctx, o, api) {
     const g = ctx.gitStatus;
     if (!g) {
@@ -38,15 +40,6 @@ export const gitBranch = defineWidget<{ showDirty: boolean; showAheadBehind: boo
     segs.push(branch);
     if (g.conflict) segs.push(api.seg(" !conflict", { fg: "crit" }));
     if (kind && o.parens) segs.push(api.seg(")", { fg: "git" }));
-    if (o.showAheadBehind && (g.ahead > 0 || g.behind > 0)) {
-      const ab = [g.ahead > 0 ? `↑${g.ahead}` : "", g.behind > 0 ? `↓${g.behind}` : ""].filter(Boolean).join(" ");
-      segs.push(api.seg(` ${ab}`, { fg: "muted" }));
-    }
-    if (o.showFileStats && g.fileStats) {
-      const f = g.fileStats;
-      const bits = [f.modified ? `!${f.modified}` : "", f.added ? `+${f.added}` : "", f.deleted ? `✘${f.deleted}` : "", f.untracked ? `?${f.untracked}` : ""].filter(Boolean);
-      if (bits.length) segs.push(api.seg(` ${bits.join(" ")}`, { fg: "warn" }));
-    }
     return segs;
   },
 });
@@ -91,55 +84,87 @@ export const gitPr = defineWidget<{ showState: boolean }>({
   },
 });
 
+/** How git.linesChanged lists the changed files; "breakdown" is the pre-release name of "letters". */
+type FilesStyle = "off" | "total" | "letters" | "symbols" | "breakdown";
+
 /**
- * The changed-files part of git.linesChanged, from `git status`: "4 files" or "4 files A1 M2 D1 R1".
- * Always the worktree, whatever `source` the lines use: Claude Code reports lines per session but no
- * files. A/M/D/R are git's own status letters; untracked files count as added (they are new files
- * that just haven't been `git add`ed), and M excludes renames so each file is counted once.
+ * The changed-files part of git.linesChanged, from `git status`. Always the worktree, whatever
+ * `source` the lines use: Claude Code reports lines per session but no files.
+ *   total    "4 files"
+ *   letters  "4 files A1 M2 D1 R1" — git's own status letters; untracked files count as added
+ *            (new files that just haven't been `git add`ed), and M excludes renames so each file
+ *            is counted once.
+ *   symbols  "!2 +1 ✘1 ?1 →1" — the notation git.branch used to show (modified, staged added,
+ *            deleted, untracked), one warn-coloured run as it was there; →N for renames is new.
  */
-function changedFiles(f: FileStats | undefined, breakdown: boolean, api: WidgetApi): Segment[] {
-  if (!f) return [];
+function changedFiles(f: FileStats | undefined, style: FilesStyle, api: WidgetApi): Segment[] {
+  if (!f || style === "off") return [];
   const renamed = f.renamed ?? 0;
+  const modified = Math.max(0, f.modified - renamed);
+  if (style === "symbols") {
+    const bits = [modified ? `!${modified}` : "", f.added ? `+${f.added}` : "", f.deleted ? `✘${f.deleted}` : "", f.untracked ? `?${f.untracked}` : "", renamed ? `→${renamed}` : ""].filter(Boolean);
+    return bits.length ? [api.seg(bits.join(" "), { fg: "warn" })] : [];
+  }
   const parts: Array<[string, number, string]> = [
     ["A", f.added + f.untracked, "ok"],
-    ["M", Math.max(0, f.modified - renamed), "warn"],
+    ["M", modified, "warn"],
     ["D", f.deleted, "crit"],
     ["R", renamed, "accent"],
   ];
   const total = parts.reduce((n, [, c]) => n + c, 0);
   if (total === 0) return [];
   const segs = [api.seg(`${total} ${total === 1 ? "file" : "files"}`, { fg: "muted" })];
-  if (breakdown) for (const [letter, c, fg] of parts) if (c) segs.push(api.seg(` ${letter}${c}`, { fg }));
+  if (style !== "total") for (const [letter, c, fg] of parts) if (c) segs.push(api.seg(` ${letter}${c}`, { fg }));
   return segs;
 }
 
-export const gitLines = defineWidget<{ source: "session" | "worktree"; files: "off" | "total" | "breakdown"; hideZero: boolean }>({
+/** Commits ahead of / behind the upstream, as git.branch used to show them: "↑2 ↓1". */
+function aheadBehind(ctx: Ctx, api: WidgetApi): Segment[] {
+  const g = ctx.gitStatus;
+  if (!g || (g.ahead <= 0 && g.behind <= 0)) return [];
+  return [api.seg([g.ahead > 0 ? `↑${g.ahead}` : "", g.behind > 0 ? `↓${g.behind}` : ""].filter(Boolean).join(" "), { fg: "muted" })];
+}
+
+/**
+ * "Changes" in the panel. The id stays git.linesChanged so saved configs keep working; it took over
+ * ahead/behind and the file stats from git.branch in config version 2 (see migrateGitBranchParts).
+ */
+export const gitLines = defineWidget<{ lines: boolean; source: "session" | "worktree"; files: FilesStyle; aheadBehind: boolean; hideZero: boolean }>({
   id: "git.linesChanged",
-  name: "Lines changed",
-  description: "Lines added/removed: either what this session edited (Claude Code's count) or what is uncommitted in the worktree (git diff HEAD). Can add the changed files from git status.",
+  name: "Changes",
+  description:
+    "What changed: lines added/removed (this session's edits, or what is uncommitted in the worktree), the changed files from git status, and commits ahead of/behind the upstream.",
   category: "git",
-  sample: "+156 -23",
+  sample: "+156 -23 · 4 files A1 M2 D1 · ↑2",
   schema: {
     type: "object",
     properties: {
-      source: { type: "string", enum: ["session", "worktree"], default: "session", title: "Count" },
+      lines: { type: "boolean", default: true, title: "Show +N -N lines" },
+      source: { type: "string", enum: ["session", "worktree"], default: "session", title: "Count", "x-requires": { lines: true } },
       files: {
         type: "string",
-        enum: ["off", "total", "breakdown"],
+        enum: ["off", "total", "letters", "symbols"],
         default: "off",
         title: "Changed files",
-        description: "From git status: 4 files, or 4 files A1 M2 D1 R1 (added, modified, deleted, renamed)",
+        description: "From git status: 4 files · 4 files A1 M2 D1 R1 · !2 +1 ✘1 ?1 →1",
       },
-      hideZero: { type: "boolean", default: true, title: "Hide when both are zero" },
+      aheadBehind: { type: "boolean", default: false, title: "Show ↑N ↓N" },
+      hideZero: { type: "boolean", default: true, title: "Hide when both are zero", "x-requires": { lines: true } },
     },
   },
-  defaults: { source: "session", files: "off", hideZero: true },
+  defaults: { lines: true, source: "session", files: "off", aheadBehind: false, hideZero: true },
+  sampleFor(o) {
+    // Only the parts this instance shows, in the order render() puts them.
+    const files = { off: "", total: "4 files", letters: "4 files A1 M2 D1", breakdown: "4 files A1 M2 D1", symbols: "!2 +1 ✘1 ?1" }[o.files] ?? "";
+    return [o.lines ? "+156 -23" : "", files, o.aheadBehind ? "↑2" : ""].filter(Boolean).join(" · ");
+  },
   render(ctx, o, api) {
-    const lines = renderLines(ctx, o, api);
-    const files = o.files === "off" ? [] : changedFiles(ctx.gitStatus?.fileStats, o.files === "breakdown", api);
-    if (!lines && !files.length) return null;
-    if (!lines) return files;
-    return files.length ? [...lines, api.seg(" · ", { fg: "muted" }), ...files] : lines;
+    // Each part hides itself when empty; the widget hides when all of them are.
+    const parts = [o.lines ? renderLines(ctx, o, api) : null, changedFiles(ctx.gitStatus?.fileStats, o.files, api), o.aheadBehind ? aheadBehind(ctx, api) : []].filter(
+      (p): p is Segment[] => !!p && p.length > 0,
+    );
+    if (!parts.length) return null;
+    return parts.flatMap((p, i) => (i ? [api.seg(" · ", { fg: "muted" }), ...p] : p));
   },
 });
 

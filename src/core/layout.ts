@@ -53,8 +53,9 @@ function renderInstance(
     let segs: Segment[] = out === null || out === undefined ? [] : typeof out === "string" ? [{ text: out }] : out;
     let filled = false;
     if (segs.length === 0 || segs.every((s) => s.text === "")) {
-      if (!fillEmpty || !def.sample) return null;
-      segs = [{ text: def.sample }];
+      const sample = def.sampleFor?.(opts) || def.sample;
+      if (!fillEmpty || !sample) return null;
+      segs = [{ text: sample }];
       filled = true;
     }
     // Widgets that do not know about labels still get one: a muted prefix set from the instance.

@@ -94,17 +94,53 @@ describe("git.linesChanged files", () => {
     expect(s!.fileStats).toMatchObject({ modified: 2, renamed: 1, added: 1, untracked: 1, deleted: 1 });
   });
 
-  const render = async (files: string) => {
+  const render = async (options: Record<string, unknown>) => {
     ensureBuiltins();
-    const config = { ...plainConfig([{ left: [{ widget: "git.linesChanged", options: { source: "worktree", files } }] }]), git: { enabled: true, cacheMs: 0 } };
+    const config = { ...plainConfig([{ left: [{ widget: "git.linesChanged", options: { source: "worktree", ...options } }] }]), git: { enabled: true, cacheMs: 0 } };
     const ctx = await buildContext({ workspace: { current_dir: repo2 } } as never, config, { columns: 0, now: Date.now() });
     return renderLayout(config, ctx).lines[0] ?? "";
   };
 
-  test("off (the default) shows only the lines; total and breakdown add the files", async () => {
-    const lines = await render("off");
+  test("files off (the default) shows only the lines; count, letters and symbols add the files", async () => {
+    const lines = await render({ files: "off" });
     expect(lines).toMatch(/^\+\d+ -\d+$/);
-    expect(await render("total")).toBe(`${lines} · 5 files`);
-    expect(await render("breakdown")).toBe(`${lines} · 5 files A2 M1 D1 R1`);
+    expect(await render({ files: "total" })).toBe(`${lines} · 5 files`);
+    expect(await render({ files: "letters" })).toBe(`${lines} · 5 files A2 M1 D1 R1`);
+    // "breakdown" was the option's name before it was released as "letters".
+    expect(await render({ files: "breakdown" })).toBe(`${lines} · 5 files A2 M1 D1 R1`);
+    // The notation git.branch used, now with → for renames: ! modified, + staged new, ✘, ? untracked.
+    expect(await render({ files: "symbols" })).toBe(`${lines} · !1 +1 ✘1 ?1 →1`);
+  });
+
+  test("lines can be turned off; nothing ahead/behind and no files → the widget hides", async () => {
+    expect(await render({ lines: false, files: "symbols" })).toBe("!1 +1 ✘1 ?1 →1");
+    // No upstream in this repo, so ↑N ↓N has nothing to show.
+    expect(await render({ lines: false, aheadBehind: true })).toBe("");
+  });
+});
+
+describe("Changes preview stand-in", () => {
+  // With no data the preview prints a sample; it must only show the parts this instance has on,
+  // or a ↑N ↓N-only Changes (Minimal, Standard, migrated layouts) stands in as "+156 -23 · 4 files…".
+  const standIn = async (options: Record<string, unknown>) => {
+    ensureBuiltins();
+    const config = plainConfig([{ left: [{ widget: "git.linesChanged", options }] }]);
+    const ctx = await buildContext({} as never, config, { columns: 0, now: Date.now() });
+    return renderLayout(config, ctx, { fillEmpty: true }).lines[0] ?? "";
+  };
+  test("follows the options", async () => {
+    expect(await standIn({ lines: false, aheadBehind: true })).toBe("↑2");
+    expect(await standIn({ files: "symbols", aheadBehind: true })).toBe("+156 -23 · !2 +1 ✘1 ?1 · ↑2");
+    expect(await standIn({})).toBe("+156 -23");
+  });
+});
+
+describe("Changes ↑N ↓N", () => {
+  test("shows commits ahead of the upstream, as git.branch did", async () => {
+    ensureBuiltins();
+    const config = { ...plainConfig([{ left: [{ widget: "git.linesChanged", options: { lines: false, aheadBehind: true } }] }]), git: { enabled: true, cacheMs: 0 } };
+    // `repo` (top of this file) is one commit ahead of its upstream.
+    const ctx = await buildContext({ workspace: { current_dir: repo } } as never, config, { columns: 0, now: Date.now() });
+    expect(renderLayout(config, ctx).lines[0]).toBe("↑1");
   });
 });

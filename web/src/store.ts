@@ -27,16 +27,22 @@ export type PresetId = "minimal" | "standard" | "full";
 /** Which config file edits are written to. */
 export type Scope = "user" | "project";
 
+/** Changes showing only commits ahead of / behind the upstream. */
+const AHEAD_BEHIND = { widget: "git.linesChanged", options: { lines: false, aheadBehind: true } };
+
 /** Preset layouts. Names and blurbs are UI copy and live in the locale files (`presets.<id>`). */
 export const PRESETS: Record<PresetId, { lines: LineConfig[] }> = {
   // Context usage without its bar prints what context.value did (`ctx 32%`); that widget is no
   // longer offered, so the preset doesn't hand out one the tray won't.
+  // Changes with only ↑N ↓N after the branch: what git.branch showed by default before config
+  // version 2 moved it (src/core/config.ts migrateGitBranchParts), so these presets look as before
+  // and a migrated preset layout still matches its preset.
   minimal: {
-    lines: [{ left: [{ widget: "project.path" }, { widget: "git.branch" }], right: [{ widget: "model.badge" }, { widget: "context.bar", label: "ctx", options: { showBar: false } }] }],
+    lines: [{ left: [{ widget: "project.path" }, { widget: "git.branch" }, AHEAD_BEHIND], right: [{ widget: "model.badge" }, { widget: "context.bar", label: "ctx", options: { showBar: false } }] }],
   },
   standard: {
     lines: [
-      { left: [{ widget: "project.path" }, { widget: "git.branch" }], right: [{ widget: "model.badge" }] },
+      { left: [{ widget: "project.path" }, { widget: "git.branch" }, AHEAD_BEHIND], right: [{ widget: "model.badge" }] },
       { left: [{ widget: "usage.windows" }], right: [{ widget: "context.bar" }] },
     ],
   },
@@ -54,8 +60,8 @@ export const PRESETS: Record<PresetId, { lines: LineConfig[] }> = {
       {
         left: [
           { widget: "git.repo", label: "Git" },
-          { widget: "git.branch", options: { showFileStats: true } },
-          { widget: "git.linesChanged", style: { bold: true }, options: { source: "worktree" } },
+          { widget: "git.branch" },
+          { widget: "git.linesChanged", style: { bold: true }, options: { source: "worktree", files: "symbols", aheadBehind: true } },
         ],
         right: [{ widget: "context.bar", options: { showTokens: true } }],
       },

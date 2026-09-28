@@ -8,7 +8,8 @@ import * as path from "node:path";
 import { adoptLegacyDir, APP_NAME, LEGACY_APP_NAME, newOrLegacy } from "../data/app-name.js";
 import type { FooterConfig, LineConfig, WidgetInstance } from "./types.js";
 
-export const CONFIG_VERSION = 1 as const;
+/** 2: ahead/behind and the file stats moved from git.branch to git.linesChanged (migrateGitBranchParts). */
+export const CONFIG_VERSION = 2 as const;
 
 /** The user's own folder: config.json and widgets/. A pre-0.4.0 `claude-code-ssp` one is moved here on first use. */
 export function userConfigDir(env: NodeJS.ProcessEnv = process.env, homeDir = os.homedir()): string {
@@ -30,7 +31,8 @@ export function projectConfigPath(cwd: string): string {
 
 export const DEFAULT_LINES: LineConfig[] = [
   {
-    left: [{ widget: "project.path" }, { widget: "git.branch" }],
+    // Changes with only ↑N ↓N: what git.branch showed by default before config version 2.
+    left: [{ widget: "project.path" }, { widget: "git.branch" }, { widget: "git.linesChanged", options: { lines: false, aheadBehind: true } }],
     right: [{ widget: "model.badge" }, { widget: "session.duration" }, { widget: "cost.session" }],
   },
   {
@@ -107,6 +109,62 @@ export function liftLegacyColorMode<T extends Partial<FooterConfig>>(value: T): 
   return gradient ? { ...value, colorMode: "gradient" } : value;
 }
 
+/**
+ * Config version 2 moved ahead/behind (`showAheadBehind`, on by default) and the file stats
+ * (`showFileStats`) from git.branch to Changes (git.linesChanged). A version-1 layer is carried
+ * over so nobody's statusline loses them:
+ *   - a Changes widget on the same line takes them (`aheadBehind`, `files: "symbols"`), unless it
+ *     already sets those options itself;
+ *   - otherwise a Changes widget showing only them (`lines: false`) is inserted right after the branch.
+ * The result is marked version 2, which is what makes this run once: the panel saves the layer as
+ * read (migrated) along with the version, and a version-2 layer is never touched again — so a
+ * Changes widget removed on purpose later doesn't come back. A layer with lines but no version (hand
+ * written) counts as version 1. Like liftLegacyColorMode, this runs on each layer as it is read.
+ */
+export function migrateGitBranchParts<T extends Partial<FooterConfig>>(value: T): T {
+  if (!Array.isArray(value.lines) || (typeof value.version === "number" && value.version >= 2)) return value;
+  const ZONES = ["left", "center", "right"] as const;
+  const lines = value.lines.map((line) => {
+    if (!isPlainObject(line)) return line;
+    // Pass 1: copy the zones, strip the two options off every branch, and note what they showed.
+    const out: LineConfig = { ...line };
+    let ab = false;
+    let fs = false;
+    let branchAt: { zone: (typeof ZONES)[number]; index: number } | null = null;
+    for (const zone of ZONES) {
+      if (!Array.isArray(line[zone])) continue;
+      out[zone] = line[zone]!.map((w, index) => {
+        if (!isPlainObject(w) || w.widget !== "git.branch") return w;
+        const opts = isPlainObject(w.options) ? w.options : {};
+        const { showAheadBehind, showFileStats, ...rest } = opts as Record<string, unknown>;
+        // The old defaults: ahead/behind on, file stats off.
+        ab ||= showAheadBehind !== false;
+        fs ||= showFileStats === true;
+        branchAt ??= { zone, index };
+        return isPlainObject(w.options) ? { ...w, options: rest } : w;
+      });
+    }
+    if (!branchAt || (!ab && !fs)) return out;
+    // Pass 2: hand them to the line's first Changes widget, or add one right after the branch.
+    for (const zone of ZONES) {
+      const list = out[zone];
+      const i = Array.isArray(list) ? list.findIndex((w) => isPlainObject(w) && w.widget === "git.linesChanged") : -1;
+      if (i < 0) continue;
+      const target = list![i]!;
+      const o: Record<string, unknown> = { ...(isPlainObject(target.options) ? target.options : {}) };
+      if (ab && o.aheadBehind === undefined) o.aheadBehind = true;
+      if (fs && (o.files === undefined || o.files === "off")) o.files = "symbols";
+      out[zone] = list!.map((w, j) => (j === i ? { ...target, options: o } : w));
+      return out;
+    }
+    const { zone, index } = branchAt as { zone: (typeof ZONES)[number]; index: number };
+    const inserted: WidgetInstance = { widget: "git.linesChanged", options: { lines: false, ...(ab ? { aheadBehind: true } : {}), ...(fs ? { files: "symbols" } : {}) } };
+    out[zone] = [...out[zone]!.slice(0, index + 1), inserted, ...out[zone]!.slice(index + 1)];
+    return out;
+  });
+  return { ...value, lines, version: 2 };
+}
+
 /** A widget instance without the pre-0.4.2 per-widget colorMode, which nothing reads any more. */
 function withoutLegacyColorMode(w: WidgetInstance): WidgetInstance {
   if (!isPlainObject(w.options) || !("colorMode" in w.options)) return w;
@@ -120,7 +178,7 @@ function readLayer(name: ConfigLayer["name"], filePath: string | null): ConfigLa
     const raw = fs.readFileSync(filePath, "utf8");
     const parsed = JSON.parse(raw) as unknown;
     if (!isPlainObject(parsed)) return { name, path: filePath, exists: true, value: null, error: "top-level value is not an object" };
-    return { name, path: filePath, exists: true, value: liftLegacyColorMode(parsed as Partial<FooterConfig>) };
+    return { name, path: filePath, exists: true, value: migrateGitBranchParts(liftLegacyColorMode(parsed as Partial<FooterConfig>)) };
   } catch (err) {
     const e = err as NodeJS.ErrnoException;
     if (e.code === "ENOENT") return { name, path: filePath, exists: false, value: null };
@@ -130,7 +188,7 @@ function readLayer(name: ConfigLayer["name"], filePath: string | null): ConfigLa
 
 /** Minimal shape validation; unknown keys are kept so plugins can stash settings. */
 export function normalizeConfig(input: Partial<FooterConfig>): FooterConfig {
-  const merged = mergeConfig(DEFAULT_CONFIG, liftLegacyColorMode(input));
+  const merged = mergeConfig(DEFAULT_CONFIG, migrateGitBranchParts(liftLegacyColorMode(input)));
   const lines = Array.isArray(merged.lines) ? merged.lines.filter(isPlainObject) : DEFAULT_LINES;
   const cleanZone = (z: WidgetInstance[] | undefined): WidgetInstance[] => (Array.isArray(z) ? z.filter((w) => isPlainObject(w) && typeof w.widget === "string").map(withoutLegacyColorMode) : []);
   const cleanLine = (l: LineConfig): LineConfig => ({

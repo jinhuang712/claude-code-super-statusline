@@ -8,7 +8,7 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { listLiveSamples, samplesDir, type Sample } from "../core/capture.js";
 import { prepareFixture } from "../core/fixtures.js";
-import { loadEffectiveConfig, normalizeConfig, projectConfigPath, userConfigPath, writeProjectConfig, writeUserConfig } from "../core/config.js";
+import { loadEffectiveConfig, migrateGitBranchParts, normalizeConfig, projectConfigPath, userConfigPath, writeProjectConfig, writeUserConfig } from "../core/config.js";
 import { buildContext } from "../core/context.js";
 import { render } from "../core/layout.js";
 import { loadPlugins } from "../core/plugins.js";
@@ -215,7 +215,10 @@ async function handleApi(req: Request, url: URL): Promise<Response> {
     case "PUT /api/config": {
       const body = await readJson<{ scope?: "user" | "project"; config: Partial<FooterConfig> }>(req);
       const normalized = normalizeConfig(body.config ?? {});
-      const { $schema: _s, ...toWrite } = { ...body.config, version: normalized.version } as Partial<FooterConfig>;
+      // Migrated before the current version is stamped on: a version-2 file must never hold
+      // version-1 lines (a panel loaded before the upgrade could still send them), or the
+      // migration would skip it and ahead/behind would silently disappear.
+      const { $schema: _s, ...toWrite } = { ...migrateGitBranchParts(body.config ?? {}), version: normalized.version } as Partial<FooterConfig>;
       if (body.scope === "project" && !isInsideSandbox(cwd)) {
         throw new HttpError(403, "sandbox: project-scope saves outside the sandbox are disabled (this would write into a real project)");
       }

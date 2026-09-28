@@ -82,7 +82,9 @@ export function probe(config: FooterConfig, sampleId: string | null): Promise<Re
  */
 export function probeConfig(inst: WidgetInstance, theme: FooterConfig["theme"] | undefined, bar: FooterConfig["bar"] | undefined, colorMode: FooterConfig["colorMode"] = "thresholds"): FooterConfig {
   return {
-    version: 1,
+    // The current version: at 1 the server would migrate this one-widget config and add a Changes
+    // widget after every git.branch probe (src/core/config.ts migrateGitBranchParts).
+    version: 2,
     theme: theme ?? "default",
     ...(bar ? { bar } : {}),
     colorMode,

@@ -39,7 +39,7 @@ export function valuesFor(widgetId: string, name: string, schema: JsonSchema, de
   return [...new Set(out.map((v) => JSON.stringify(v)))].map((v) => JSON.parse(v) as unknown);
 }
 
-const BASE = { version: 1 as const, theme: "default", colorLevel: "truecolor" as const, separator: " │ ", columnsOffset: 0, git: { enabled: false, cacheMs: 0 }, plugins: { dirs: [] as string[], trustedProjects: [] as string[] }, captureSamples: false };
+const BASE = { version: 2 as const, theme: "default", colorLevel: "truecolor" as const, separator: " │ ", columnsOffset: 0, git: { enabled: false, cacheMs: 0 }, plugins: { dirs: [] as string[], trustedProjects: [] as string[] }, captureSamples: false };
 
 export interface SweepContext {
   id: string;

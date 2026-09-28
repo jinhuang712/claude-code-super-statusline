@@ -338,7 +338,7 @@ export const en = {
     fieldHints: {
       name: "Required, e.g. AWS_PROFILE — nothing shows until it is set",
       effortStyle: "Symbols: ○ low · ◔ medium · ◑ high · ◕ xhigh · ● max",
-      files: "From git status: A added (new files too) · M modified · D deleted · R renamed",
+      files: "From git status. Letters: A added (new files too) · M modified · D deleted · R renamed. Symbols: ! modified · + staged new · ✘ deleted · ? untracked · → renamed",
     } as Record<string, string>,
     /** Friendly names for enum values, shared by every widget. */
     enums: {
@@ -375,7 +375,7 @@ export const en = {
       "model.badge.joiner": { space: "Space", dot: "Dot ·" },
       "context.bar.value": { percent: "Used %", remaining: "Remaining %" },
       "git.linesChanged.source": { session: "Edited this session", worktree: "Uncommitted in the worktree" },
-      "git.linesChanged.files": { off: "Off", total: "Count (4 files)", breakdown: "Breakdown (A1 M2 D1 R1)" },
+      "git.linesChanged.files": { off: "Off", total: "Count (4 files)", letters: "Letters (A1 M2 D1 R1)", symbols: "Symbols (!2 +1 ✘1 ?1)" },
       "project.path.dir": { current: "Current directory", launch: "Where Claude Code started" },
     } as Record<string, Record<string, string>>,
   },

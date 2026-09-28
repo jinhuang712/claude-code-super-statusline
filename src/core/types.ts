@@ -108,7 +108,8 @@ export interface PluginsConfig {
 
 export interface FooterConfig {
   $schema?: string;
-  version: 1;
+  /** 1 or 2; files still at 1 are migrated as they are read (config.ts migrateGitBranchParts). */
+  version: 1 | 2;
   theme: string | ThemeDef;
   colorLevel: ColorLevel;
   separator: string;
@@ -214,6 +215,12 @@ export interface WidgetDefinition<O extends Record<string, unknown> = Record<str
   defaults: O;
   /** Example output shown in the picker. */
   sample?: string;
+  /**
+   * The stand-in the preview prints when this instance has no data, for widgets whose options
+   * change what they show (Changes with only ↑N ↓N shouldn't stand in as "+156 -23 · 4 files").
+   * Falls back to `sample`.
+   */
+  sampleFor?(opts: O): string;
   render(ctx: Ctx, opts: O, api: WidgetApi): Segment[] | string | null;
   /** Optional numeric value (0–100 or raw) for generic threshold coloring. */
   numeric?(ctx: Ctx, opts: O): number | null;
