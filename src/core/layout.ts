@@ -193,6 +193,19 @@ export function layoutLine(zones: Record<Zone, RenderedWidget>, columns: number,
   return [withRight(first!.text, first!.width), ...rest.map((r) => r.text)];
 }
 
+/**
+ * Keep a row's leading padding alive through Claude Code, which cleans the command's stdout with
+ * `stdout.trim().split("\n").flatMap((l) => l.trim() || [])` (seen in 2.1.283; upstream issue
+ * anthropics/claude-code#29206). A row that is only a right or center zone starts with spaces, and
+ * that trim threw them away, so e.g. a right-aligned model badge showed at the left edge whenever
+ * the left zone was empty (a fresh session without a name yet).
+ * A leading SGR reset is zero-width and not whitespace to `String.prototype.trim`, so the spaces
+ * after it survive. NBSP would not: `trim` strips it like any other Unicode space.
+ */
+export function guardLeadingSpace(line: string): string {
+  return /^\s/.test(line) ? `\x1b[0m${line}` : line;
+}
+
 export function render(config: FooterConfig, ctx: Omit<Ctx, "theme" | "colorMode">, options: RenderOptions = {}): RenderResult {
   const fillEmpty = options.fillEmpty === true;
   const started = performance.now();

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { stripAnsi, truncateVisual, visualWidth } from "../src/core/ansi.ts";
-import { layoutLine, render } from "../src/core/layout.ts";
+import { guardLeadingSpace, layoutLine, render } from "../src/core/layout.ts";
 import { DEFAULT_CONFIG } from "../src/core/config.ts";
 import { registerWidget, _resetRegistry } from "../src/core/registry.ts";
 import { defineWidget, type Ctx } from "../src/core/types.ts";
@@ -179,5 +179,29 @@ describe("render", () => {
     const out = render({ ...DEFAULT_CONFIG, colorLevel: "none", lines: [{ left: [{ widget: "ok" }, { widget: "boom" }, { widget: "missing" }] }] }, ctx);
     expect(out.lines[0]).toBe("fine │ ⚠ boom │ ⚠ missing");
     expect(out.errors.map((e) => e.widget)).toEqual(["boom", "missing"]);
+  });
+});
+
+describe("guardLeadingSpace survives Claude Code's per-line trim", () => {
+  // What Claude Code 2.1.283 does to the command's stdout before drawing it (anthropics/claude-code#29206).
+  const claudeCodeClean = (stdout: string) =>
+    stdout
+      .trim()
+      .split("\n")
+      .flatMap((l) => l.trim() || [])
+      .join("\n");
+
+  test("a right-only row stays right-aligned", () => {
+    const [row] = layoutLine({ left: z(""), center: z(""), right: z("[Opus 5.5]") }, 30);
+    expect(claudeCodeClean(row)).toBe("[Opus 5.5]"); // the bug: the padding is gone
+    const guarded = guardLeadingSpace(row);
+    expect(stripAnsi(claudeCodeClean(guarded))).toBe(" ".repeat(20) + "[Opus 5.5]");
+    expect(visualWidth(guarded)).toBe(30); // the guard adds no width
+  });
+
+  test("rows that start with content are left as they are", () => {
+    expect(guardLeadingSpace("Project ~/x   right")).toBe("Project ~/x   right");
+    const out = ["      right", "left     right2"].map(guardLeadingSpace).join("\n") + "\n";
+    expect(stripAnsi(claudeCodeClean(out)).split("\n")).toEqual(["      right", "left     right2"]);
   });
 });

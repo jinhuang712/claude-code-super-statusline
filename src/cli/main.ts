@@ -6,7 +6,7 @@ import { captureSample } from "../core/capture.js";
 import { prepareFixture } from "../core/fixtures.js";
 import { loadEffectiveConfig } from "../core/config.js";
 import { buildContext } from "../core/context.js";
-import { render } from "../core/layout.js";
+import { guardLeadingSpace, render } from "../core/layout.js";
 import { loadPlugins } from "../core/plugins.js";
 import { readStdin } from "../data/stdin.js";
 import { registerBuiltinWidgets } from "../widgets/index.js";
@@ -39,8 +39,9 @@ async function cmdRender(argv: string[]): Promise<void> {
   const ctx = await buildContext(stdin!, config, { columns: columnsArg ? Number(columnsArg) : undefined });
   const result = render(config, ctx);
   // One write, awaited until flushed: main() exits right after this returns, and a pipe write
-  // still sitting in a buffer would be cut off.
-  await writeFully(process.stdout, result.lines.map((line) => `${line}\n`).join(""));
+  // still sitting in a buffer would be cut off. Only this Claude Code-bound output is guarded: the
+  // web preview renders the same lines without Claude Code's per-line trim.
+  await writeFully(process.stdout, result.lines.map((line) => `${guardLeadingSpace(line)}\n`).join(""));
   if (process.env.CLAUDE_CODE_SUPER_STATUSLINE_DEBUG) {
     const debug = [`[claude-code-super-statusline] render ${result.ms.toFixed(1)}ms total ${(performance.now() - started).toFixed(1)}ms`, ...result.errors.map((e) => `[claude-code-super-statusline] ${e.widget}: ${e.message}`)];
     await writeFully(process.stderr, debug.map((l) => `${l}\n`).join(""));
