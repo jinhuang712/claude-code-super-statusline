@@ -55,6 +55,8 @@ Claude Code ≥ 2.1.251 now ships `rate_limits`, `prompt_cache`, `effort`, `cost
   longer offered in the panel. Until 0.2.x, `wrap` dropped the *right* zone to a row of its own and `truncate`
   cut the joined line from the end, which hid the right zone.
 * A widget that renders `null` simply disappears; separators collapse.
+* Claude Code trims every line of the output (`l.trim()`, anthropics/claude-code#29206), so a row that starts
+  with padding — a right-only or center-only row — leads with a zero-width `ESC[0m` to keep it (`guardLeadingSpace`).
 
 ## Widget contract (`src/core/types.ts`)
 
