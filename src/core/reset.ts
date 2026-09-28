@@ -39,7 +39,13 @@ export function readBaseline(sessionId: string | undefined): ResetBaseline | nul
     const raw = JSON.parse(fs.readFileSync(fileFor(sessionId), "utf8")) as Partial<ResetBaseline>;
     if (typeof raw.at !== "number") return null;
     const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0);
-    const tok = (t: Partial<SessionTokenUsage> = {}): SessionTokenUsage => ({ inputTokens: n(t.inputTokens), outputTokens: n(t.outputTokens), cacheCreationTokens: n(t.cacheCreationTokens), cacheReadTokens: n(t.cacheReadTokens), apiCalls: n(t.apiCalls) });
+    const tok = (t: Partial<SessionTokenUsage> = {}): SessionTokenUsage => ({
+      inputTokens: n(t.inputTokens),
+      outputTokens: n(t.outputTokens),
+      cacheCreationTokens: n(t.cacheCreationTokens),
+      cacheReadTokens: n(t.cacheReadTokens),
+      apiCalls: n(t.apiCalls),
+    });
     return {
       at: raw.at,
       costUsd: n(raw.costUsd),
@@ -72,7 +78,12 @@ export function clearBaseline(sessionId: string): void {
 }
 
 /** Build a baseline from a stdin payload plus the parsed transcript totals. */
-export function baselineFrom(stdin: StdinData, tokens: SessionTokenUsage | undefined, now = Date.now(), subagentTokens?: SessionTokenUsage | null): ResetBaseline {
+export function baselineFrom(
+  stdin: StdinData,
+  tokens: SessionTokenUsage | undefined,
+  now = Date.now(),
+  subagentTokens?: SessionTokenUsage | null,
+): ResetBaseline {
   const none = { inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0, cacheReadTokens: 0, apiCalls: 0 };
   return {
     at: now,
@@ -89,7 +100,11 @@ export function baselineFrom(stdin: StdinData, tokens: SessionTokenUsage | undef
  * Totals since the baseline; never negative (a baseline from a previous session shape is just ignored).
  * `which` picks the baseline field to subtract: the main chain's (`tokens`) or the subagents'.
  */
-export function netTokens(tokens: SessionTokenUsage | undefined | null, base: ResetBaseline | null, which: "tokens" | "subagentTokens" = "tokens"): SessionTokenUsage | undefined {
+export function netTokens(
+  tokens: SessionTokenUsage | undefined | null,
+  base: ResetBaseline | null,
+  which: "tokens" | "subagentTokens" = "tokens",
+): SessionTokenUsage | undefined {
   if (!tokens) return undefined;
   const b = base?.[which];
   if (!b) return tokens;

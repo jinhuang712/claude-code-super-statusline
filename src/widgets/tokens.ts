@@ -15,7 +15,14 @@ function addTokens(a: SessionTokenUsage | undefined, b: SessionTokenUsage | unde
   };
 }
 
-export const tokensSession = defineWidget<{ label: string | null; subagents: boolean; breakdown: boolean; style: "words" | "arrows"; cacheGlyph: string; parens: boolean }>({
+export const tokensSession = defineWidget<{
+  label: string | null;
+  subagents: boolean;
+  breakdown: boolean;
+  style: "words" | "arrows";
+  cacheGlyph: string;
+  parens: boolean;
+}>({
   id: "tokens.session",
   name: "Session tokens",
   description: "Cumulative tokens this session, subagents included, with optional in/out/cache breakdown.",
@@ -25,7 +32,12 @@ export const tokensSession = defineWidget<{ label: string | null; subagents: boo
     type: "object",
     properties: {
       label: { ...labelSchema, default: "Tokens" },
-      subagents: { type: "boolean", default: true, title: "Include subagents", description: "Add the tokens of Task / Agent subagents (read from their own transcripts) to the total" },
+      subagents: {
+        type: "boolean",
+        default: true,
+        title: "Include subagents",
+        description: "Add the tokens of Task / Agent subagents (read from their own transcripts) to the total",
+      },
       breakdown: { type: "boolean", default: true, title: "Show in/out/cache breakdown" },
       style: { type: "string", enum: ["words", "arrows"], default: "words", title: "Breakdown style", description: "words: in/out/cache · arrows: ↓ ↑ + cache glyph", "x-requires": { breakdown: true } },
       cacheGlyph: { type: "string", enum: ["↻", "↺", "⇄", "≈", "~"], default: "↻", title: "Cache glyph (arrows style)", "x-requires": { breakdown: true, style: "arrows" } },
@@ -88,7 +100,8 @@ export const tokensCurrent = defineWidget<{ label: string | null; showWindow: bo
 export const tokensSpeed = defineWidget<{ label: string | null }>({
   id: "tokens.outputSpeed",
   name: "Output speed",
-  description: "Output speed of the latest response, main chain or subagent, in tokens per second (end to end, so time to first token is included; replies under 200 tokens are skipped).",
+  description:
+    "Output speed of the latest response, main chain or subagent, in tokens per second (end to end, so time to first token is included; replies under 200 tokens are skipped).",
   category: "usage",
   sample: "42 tok/s",
   schema: { type: "object", properties: { label: { ...labelSchema, default: null } } },

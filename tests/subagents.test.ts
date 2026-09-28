@@ -15,7 +15,12 @@ import { renderWidget } from "./helpers.ts";
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "ssp-subagents-"));
 let n = 0;
 const usage = (out: number, cr = 0) => ({ input_tokens: 1, output_tokens: out, cache_creation_input_tokens: 0, cache_read_input_tokens: cr });
-const asst = (id: string, out: number, cr = 0) => ({ type: "assistant", isSidechain: true, timestamp: "2026-09-28T10:00:00.000Z", message: { id, role: "assistant", usage: usage(out, cr) } });
+const asst = (id: string, out: number, cr = 0) => ({
+  type: "assistant",
+  isSidechain: true,
+  timestamp: "2026-09-28T10:00:00.000Z",
+  message: { id, role: "assistant", usage: usage(out, cr) },
+});
 const user = { type: "user", isSidechain: true, timestamp: "2026-09-28T10:00:00.000Z", message: { role: "user", content: "go" } };
 const jsonl = (entries: unknown[]) => entries.map((e) => JSON.stringify(e)).join("\n") + "\n";
 
@@ -74,7 +79,10 @@ describe("subagentTokens", () => {
 });
 
 describe("tokens.session with subagents", () => {
-  const mainChain = [{ type: "user", timestamp: "2026-09-28T10:00:00.000Z", message: { role: "user", content: "hi" } }, { ...asst("main1", 1000), isSidechain: false }];
+  const mainChain = [
+    { type: "user", timestamp: "2026-09-28T10:00:00.000Z", message: { role: "user", content: "hi" } },
+    { ...asst("main1", 1000), isSidechain: false },
+  ];
   const widget = (options: Record<string, unknown> = {}) => ({ widget: "tokens.session", options: { breakdown: false, ...options } });
 
   test("the total includes subagents by default and leaves them out when switched off", async () => {
@@ -87,14 +95,21 @@ describe("tokens.session with subagents", () => {
   test("a reset nets main and subagent tokens against their own baselines", async () => {
     const t = session(mainChain, { "agent-a.jsonl": [user, asst("s1", 2000)] });
     const id = `sub-reset-${n}`;
-    writeBaseline(id, baselineFrom({} as never, { inputTokens: 1, outputTokens: 1000, cacheCreationTokens: 0, cacheReadTokens: 0, apiCalls: 1 }, 0, subagentTokens(t)));
+    writeBaseline(id, baselineFrom({}, { inputTokens: 1, outputTokens: 1000, cacheCreationTokens: 0, cacheReadTokens: 0, apiCalls: 1 }, 0, subagentTokens(t)));
     fs.appendFileSync(path.join(path.dirname(t), "sess", "subagents", "agent-b.jsonl"), jsonl([user, asst("s2", 500)]));
     expect(await renderWidget({ session_id: id, transcript_path: t }, widget())).toBe("Tokens 501");
   });
 
   test("a baseline written before subagents were counted reads their baseline as zero", () => {
     const id = "sub-old-baseline";
-    writeBaseline(id, { at: 1, costUsd: 0, apiMs: 0, linesAdded: 0, linesRemoved: 0, tokens: { inputTokens: 0, outputTokens: 10, cacheCreationTokens: 0, cacheReadTokens: 0 } } as never);
+    writeBaseline(id, {
+      at: 1,
+      costUsd: 0,
+      apiMs: 0,
+      linesAdded: 0,
+      linesRemoved: 0,
+      tokens: { inputTokens: 0, outputTokens: 10, cacheCreationTokens: 0, cacheReadTokens: 0 },
+    });
     const sub = { inputTokens: 0, outputTokens: 70, cacheCreationTokens: 0, cacheReadTokens: 0, apiCalls: 1 };
     expect(netTokens(sub, readBaseline(id), "subagentTokens")).toEqual(sub);
   });
