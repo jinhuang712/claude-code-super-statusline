@@ -2,6 +2,17 @@
 
 Versions follow the plugin manifest (`.claude-plugin/plugin.json`); marketplace installs update when it changes.
 
+## 0.5.3 — 2026-09-29
+
+- **A right-aligned widget stays right-aligned on a row of its own.** Claude Code trims every line of the
+  statusline, so a row with nothing on the left — the model badge beside a session name that a new session does
+  not have yet — lost its padding and showed at the left edge. Such rows now keep it.
+- **Empty widgets can keep their label.** A widget with no data yet (the session name, usage limits and the
+  prompt cache in a new session) used to vanish, label and all, and rows came and went after the first reply.
+  *Style → Empty widgets* sets what a labelled widget shows instead — `Name –`, `…`, `n/a` or your own text —
+  and a widget's own *When empty* overrides it or keeps it hidden. The default is still to hide it.
+- **Insert a line above or below.** A ⊕ on a line's edge, or the line-number menu, adds an empty line there.
+
 ## 0.5.2 — 2026-09-28
 
 - **Lines changed is now Changes, and it holds everything that changed.** Besides the lines added / removed
