@@ -52,6 +52,7 @@ export const zh: Messages = {
     terminalLabel: "终端",
     filled: (n) => `${n} 项还没有真实数据，先用示例值占位`,
     hidden: (n) => `${n} 项没有数据也没有示例，不显示`,
+    placeholder: (n) => `${n} 项还没有数据，显示占位符`,
     emptyLines: (n) => `${n} 行因此为空`,
     noteJoin: "；",
     settings: "预览设置",
@@ -95,6 +96,7 @@ export const zh: Messages = {
     noDataTag: "无数据",
     filledTitle: "当前数据里还没有这一项，预览里先用示例值占位",
     hiddenTitle: "当前数据里没有这一项，也没有示例值，预览不显示",
+    placeholderTitle: "当前数据里还没有这一项，显示占位符，和 Claude Code 里一样",
     lineMenu: (n) => `第 ${n} 行的选项`,
     chipHelp: "Alt+方向键移动这一项，回车打开选项，Delete 移除。",
     moved: (name, line, zone, pos) => `${name} 已移到第 ${line} 行${zone}第 ${pos} 位`,
@@ -155,6 +157,14 @@ export const zh: Messages = {
     spacesShown: "␣ 表示空格",
   },
 
+  emptyText: {
+    title: "无数据时",
+    hide: "隐藏",
+    sampleLabel: "名称",
+    customLabel: "自定义占位符",
+    hint: "带标签的组件还没有数据时显示什么，比如新会话里的会话名。选“隐藏”则连标签一起不显示。单个组件可以在它的选项里另设。",
+  },
+
   welcome: {
     title: "三步设置你的状态栏",
     steps: [
@@ -194,6 +204,9 @@ export const zh: Messages = {
     nothingNow: "（当前数据下没有内容）",
     label: "标签",
     hidden: "已隐藏",
+    whenEmpty: "无数据时",
+    whenEmptyInherit: (v) => (v ? `样式：${v}` : "隐藏（样式）"),
+    whenEmptyNoLabel: "隐藏（无标签）",
     show: "显示",
     hide: "隐藏",
     on: "开",

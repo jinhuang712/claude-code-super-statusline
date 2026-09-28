@@ -121,7 +121,7 @@ function Chip({ id, line, zone, index, item }: { id: string; line: number; zone:
           e.preventDefault();
           s.nudge({ line, zone, index }, dir);
         }}
-        title={empty === "filled" ? t.layout.filledTitle : empty === "hidden" ? t.layout.hiddenTitle : t.layout.editOptions}
+        title={empty === "filled" ? t.layout.filledTitle : empty === "placeholder" ? t.layout.placeholderTitle : empty === "hidden" ? t.layout.hiddenTitle : t.layout.editOptions}
         aria-describedby={CHIP_HELP_ID}
         aria-keyshortcuts="Alt+ArrowLeft Alt+ArrowRight Alt+ArrowUp Alt+ArrowDown Delete"
       >

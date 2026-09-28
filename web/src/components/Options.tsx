@@ -321,6 +321,7 @@ export function OptionsPanel() {
   const t = useT();
   const s = useStore();
   const labelId = useId();
+  const emptyId = useId();
   const panel = useRef<HTMLDivElement>(null);
   const sel = s.selection!;
   const w = widgetAt(s, sel)!;
@@ -363,6 +364,16 @@ export function OptionsPanel() {
       }
       if (v === undefined) delete inst.label;
       else inst.label = v;
+    });
+  // This widget's emptyText: undefined follows the config-wide one, null hides it when empty. An
+  // own "" means "hide" to the engine too, but the field never writes it: clearing the field goes
+  // back to following the global, which is what an empty box looks like it does.
+  const ownEmpty = w.emptyText === "" ? null : w.emptyText;
+  const globalEmpty = s.config!.emptyText ?? "";
+  const setEmpty = (v: string | null | undefined) =>
+    s.updateAt(sel, (inst) => {
+      if (v === undefined) delete inst.emptyText;
+      else inst.emptyText = v;
     });
 
   // Group the schema by control kind so the panel reads left to right, short controls first.
@@ -419,6 +430,25 @@ export function OptionsPanel() {
             />
             <button className="btn btn-sm" onClick={() => setLabel(label === null ? defaultLabel || name : null)}>
               {label === null ? t.options.show : t.options.hide}
+            </button>
+          </span>
+        </div>
+        <div className="opt-field">
+          <label className="opt-title" htmlFor={emptyId}>
+            {t.options.whenEmpty}
+          </label>
+          <span className="flex items-center gap-1.5">
+            {/* Blank = follow Style → Empty widgets, which the placeholder text spells out. */}
+            <TextField
+              id={emptyId}
+              className="field field-sm mono"
+              disabled={ownEmpty === null}
+              value={ownEmpty ?? ""}
+              placeholder={ownEmpty === null ? t.options.hidden : globalEmpty !== "" && label === null ? t.options.whenEmptyNoLabel : t.options.whenEmptyInherit(globalEmpty)}
+              onChange={(v) => setEmpty(v === "" ? undefined : v)}
+            />
+            <button className="btn btn-sm" onClick={() => setEmpty(ownEmpty === null ? undefined : null)}>
+              {ownEmpty === null ? t.options.show : t.options.hide}
             </button>
           </span>
         </div>

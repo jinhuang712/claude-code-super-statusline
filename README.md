@@ -50,7 +50,8 @@ Start from a preset, then arrange it by hand — the preview redraws as you go:
 * **Progress bars** — the bar glyphs: full block, tall, low, half, slanted, squares, line, dots.
 * **Progress bar mode** — thresholds (green → yellow → red) or a smooth gradient.
 * **Separator** — `│` `·` `•` `/` `|` `❯`, or your own.
-* **Each widget** — in *Custom*, click a widget to change its label, colour and options:
+* **Empty widgets** — what a labelled widget shows before it has data (`Name –`), or hide it as before.
+* **Each widget** — in *Custom*, click a widget to change its label, colour, what it shows when empty, and options:
 
 <img alt="A widget's options opened under its line: label, percentage, bar width, text colour, thresholds and toggles" src="docs/images/options-dark.png">
 

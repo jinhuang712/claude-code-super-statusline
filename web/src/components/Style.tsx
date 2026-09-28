@@ -232,11 +232,48 @@ function SeparatorChoices() {
   );
 }
 
-type Part = "theme" | "bar" | "levels" | "separator";
+/** Common placeholders for a widget with no data; "" = hide it (the default). Anything else goes in Custom. */
+const EMPTY_TEXTS = ["", "–", "-", "…", "?", "n/a"];
+
+/** Style → Empty widgets: config `emptyText`, what a labelled widget prints before it has data. */
+function EmptyTextChoices() {
+  const t = useT();
+  const value = useStore((s) => s.config!.emptyText ?? "");
+  const setConfig = useStore((s) => s.setConfig);
+  const setTryOn = useStore((s) => s.setTryOn);
+  const tryOn = useTryOn();
+  const custom = !EMPTY_TEXTS.includes(value);
+  const set = (v: string) => {
+    setConfig((c) => {
+      c.emptyText = v;
+    });
+    setTryOn(null);
+  };
+  return (
+    <>
+      {EMPTY_TEXTS.map((v) => (
+        <button key={v} className="choice" data-active={value === v} aria-pressed={value === v} {...tryOn({ emptyText: v }, v || t.emptyText.hide)} onClick={() => set(v)} aria-label={v || t.emptyText.hide}>
+          {v ? (
+            <span className="mono sep-sample">
+              {t.emptyText.sampleLabel} <b>{v}</b>
+            </span>
+          ) : (
+            <span>{t.emptyText.hide}</span>
+          )}
+        </button>
+      ))}
+      <span className="choice choice-custom" data-active={custom}>
+        <TextField className="field mono !w-28" value={custom ? value : ""} onChange={(v) => setConfig((c) => void (c.emptyText = v))} ariaLabel={t.emptyText.customLabel} placeholder={t.separators.custom} />
+      </span>
+    </>
+  );
+}
+
+type Part = "theme" | "bar" | "levels" | "separator" | "empty";
 
 /**
- * How the statusline looks, as one row of four summaries — the current theme, bar glyphs, progress
- * bar mode and separator — each opening its choices in place underneath. It used to lay out all 24 choices at once; most
+ * How the statusline looks, as one row of summaries — the current theme, bar glyphs, progress bar
+ * mode, separator and empty-widget placeholder — each opening its choices in place underneath. It used to lay out all 24 choices at once; most
  * visits change none of them, and the one that does only needs one group at a time.
  */
 export function Style() {
@@ -261,7 +298,8 @@ export function Style() {
       <Icon name="chevron" size={12} className="style-pick-chevron" />
     </button>
   );
-  const titles: Record<Part, string> = { theme: t.themes.title, bar: t.bars.title, levels: t.levels.title, separator: t.separators.title };
+  const titles: Record<Part, string> = { theme: t.themes.title, bar: t.bars.title, levels: t.levels.title, separator: t.separators.title, empty: t.emptyText.title };
+  const emptyText = config.emptyText ?? "";
 
   return (
     <section className="section" aria-labelledby="style-title">
@@ -281,6 +319,17 @@ export function Style() {
             main<b>{config.separator}</b>42%
           </span>,
         )}
+        {pick(
+          "empty",
+          t.emptyText.title,
+          emptyText ? (
+            <span className="mono sep-sample">
+              {t.emptyText.sampleLabel} <b>{emptyText}</b>
+            </span>
+          ) : (
+            <span>{t.emptyText.hide}</span>
+          ),
+        )}
       </div>
       {open && (
         <div
@@ -296,12 +345,13 @@ export function Style() {
             }
           }}
         >
-          <p className="hint">{t.style.hint}</p>
+          <p className="hint">{open === "empty" ? t.emptyText.hint : t.style.hint}</p>
           <div className="choices">
             {open === "theme" && <ThemeChoices />}
             {open === "bar" && <BarChoices />}
             {open === "levels" && <LevelChoices theme={theme} filled={glyphs.filled} />}
             {open === "separator" && <SeparatorChoices />}
+            {open === "empty" && <EmptyTextChoices />}
           </div>
         </div>
       )}

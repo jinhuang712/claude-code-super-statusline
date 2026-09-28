@@ -12,6 +12,8 @@ export interface WidgetInstance {
   options?: Record<string, unknown>;
   style?: Style;
   label?: string | null;
+  /** Placeholder while the widget has no data; overrides FooterConfig.emptyText. null / "" = hide. */
+  emptyText?: string | null;
 }
 export type Zone = "left" | "center" | "right";
 export interface LineConfig {
@@ -36,6 +38,8 @@ export interface FooterConfig {
   /** How every percentage widget is coloured (Style → Progress bar mode). */
   colorMode: "thresholds" | "gradient";
   columnsOffset: number;
+  /** What a labelled widget with no data prints ("Name –"); "" hides it (Style → Empty widgets). */
+  emptyText?: string;
   lines: LineConfig[];
   git: { enabled: boolean; cacheMs: number };
   /** `trustedProjects` is honoured only in the user file (a project can't trust itself). */
@@ -90,7 +94,8 @@ export interface EffectiveConfig {
 export interface RenderResult {
   lines: string[];
   errors: Array<{ widget: string; message: string }>;
-  empty: Array<{ line: number; zone: Zone; index: number; widget: string; filled?: boolean }>;
+  /** `filled`: the sample stood in; `placeholder`: the configured emptyText did. */
+  empty: Array<{ line: number; zone: Zone; index: number; widget: string; filled?: boolean; placeholder?: boolean }>;
   ms: number;
 }
 

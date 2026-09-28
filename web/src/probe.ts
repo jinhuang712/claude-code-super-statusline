@@ -77,10 +77,11 @@ export function probe(config: FooterConfig, sampleId: string | null): Promise<Re
 }
 
 /**
- * The config a probe renders: just this widget, on one line, with the current theme, bar glyphs and colour mode.
+ * The config a probe renders: just this widget, on one line, with the current theme, bar glyphs, colour mode
+ * and empty-widget placeholder (without it, an empty widget showed its sample here but "Name –" above).
  * Colours stay on (truecolor) so samples can be drawn exactly as the terminal would.
  */
-export function probeConfig(inst: WidgetInstance, theme: FooterConfig["theme"] | undefined, bar: FooterConfig["bar"] | undefined, colorMode: FooterConfig["colorMode"] = "thresholds"): FooterConfig {
+export function probeConfig(inst: WidgetInstance, theme: FooterConfig["theme"] | undefined, bar: FooterConfig["bar"] | undefined, colorMode: FooterConfig["colorMode"] = "thresholds", emptyText = ""): FooterConfig {
   return {
     // The current version: at 1 the server would migrate this one-widget config and add a Changes
     // widget after every git.branch probe (src/core/config.ts migrateGitBranchParts).
@@ -91,6 +92,7 @@ export function probeConfig(inst: WidgetInstance, theme: FooterConfig["theme"] |
     colorLevel: "truecolor",
     separator: " ",
     columnsOffset: 0,
+    emptyText,
     lines: [{ left: [inst] }],
     git: { enabled: true, cacheMs: 2000 },
     plugins: { dirs: [] },
@@ -104,11 +106,12 @@ export function useProbe(insts: WidgetInstance[]): string[] {
   const theme = useStore((s) => s.config?.theme);
   const bar = useStore((s) => s.config?.bar);
   const colorMode = useStore((s) => s.config?.colorMode);
+  const emptyText = useStore((s) => s.config?.emptyText ?? "");
   const [out, setOut] = useState<string[]>([]);
-  const key = JSON.stringify([insts, sampleId, theme, bar, colorMode]);
+  const key = JSON.stringify([insts, sampleId, theme, bar, colorMode, emptyText]);
   useEffect(() => {
     let alive = true;
-    Promise.all(insts.map((inst) => probe(probeConfig(inst, theme, bar, colorMode), sampleId).then((r) => r?.lines[0]?.trimEnd() ?? ""))).then((texts) => {
+    Promise.all(insts.map((inst) => probe(probeConfig(inst, theme, bar, colorMode, emptyText), sampleId).then((r) => r?.lines[0]?.trimEnd() ?? ""))).then((texts) => {
       if (alive) setOut(texts);
     });
     return () => {

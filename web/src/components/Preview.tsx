@@ -322,8 +322,16 @@ export function Preview() {
   const shown = preview?.lines.length ?? 0;
   const hidden = Math.max(0, lineCount - shown);
   const filledCount = preview?.empty?.filter((e) => e.filled).length ?? 0;
-  const hiddenCount = (preview?.empty?.length ?? 0) - filledCount;
-  const liveNote = [filledCount ? t.preview.filled(filledCount) : "", hiddenCount ? t.preview.hidden(hiddenCount) : "", hidden ? t.preview.emptyLines(hidden) : ""].filter(Boolean).join(t.preview.noteJoin);
+  const placeholderCount = preview?.empty?.filter((e) => e.placeholder).length ?? 0;
+  const hiddenCount = (preview?.empty?.length ?? 0) - filledCount - placeholderCount;
+  const liveNote = [
+    filledCount ? t.preview.filled(filledCount) : "",
+    placeholderCount ? t.preview.placeholder(placeholderCount) : "",
+    hiddenCount ? t.preview.hidden(hiddenCount) : "",
+    hidden ? t.preview.emptyLines(hidden) : "",
+  ]
+    .filter(Boolean)
+    .join(t.preview.noteJoin);
   // During a try-on the note describes the real config, not the one being hovered: its numbers would
   // be wrong, and the row appearing/disappearing would change the height (see the hover loop above).
   const realNote = useRef("");

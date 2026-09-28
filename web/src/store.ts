@@ -507,7 +507,7 @@ export const useStore = create<State>((set, get) => {
       if (!c) return;
       // The visual choices, merged over whatever the project file already had.
       const project = layers.find((l) => l.name === "project")?.value ?? {};
-      const next = { ...project, lines: c.lines, theme: c.theme, separator: c.separator, colorLevel: c.colorLevel, ...(c.bar ? { bar: c.bar } : {}) };
+      const next = { ...project, lines: c.lines, theme: c.theme, separator: c.separator, emptyText: c.emptyText ?? "", colorLevel: c.colorLevel, ...(c.bar ? { bar: c.bar } : {}) };
       try {
         await api.saveConfig(next as Partial<FooterConfig>, "project", projectCwd);
         adopt(await api.config(projectCwd));
@@ -688,8 +688,11 @@ export function effectiveLabel(inst: WidgetInstance, w: WidgetManifest | undefin
   return null;
 }
 
-/** null = has real data; "filled" = sample text stands in; "hidden" = nothing to show at all. */
-export function emptyStateAt(preview: RenderResult | null, sel: Selection): null | "filled" | "hidden" {
+/**
+ * null = has real data; "filled" = sample text stands in; "placeholder" = the configured emptyText
+ * stands in (as it will in Claude Code); "hidden" = nothing to show at all.
+ */
+export function emptyStateAt(preview: RenderResult | null, sel: Selection): null | "filled" | "placeholder" | "hidden" {
   const e = preview?.empty?.find((x) => x.line === sel.line && x.zone === sel.zone && x.index === sel.index);
-  return e ? (e.filled ? "filled" : "hidden") : null;
+  return e ? (e.filled ? "filled" : e.placeholder ? "placeholder" : "hidden") : null;
 }

@@ -58,6 +58,7 @@ export const en = {
     terminalLabel: "Terminal",
     filled: (n: number) => (n === 1 ? "1 item has no real data yet — showing a sample value" : `${n} items have no real data yet — showing sample values`),
     hidden: (n: number) => (n === 1 ? "1 item has no data or sample and is hidden" : `${n} items have no data or sample and are hidden`),
+    placeholder: (n: number) => (n === 1 ? "1 item has no data yet — showing its placeholder" : `${n} items have no data yet — showing their placeholder`),
     emptyLines: (n: number) => (n === 1 ? "1 line is empty as a result" : `${n} lines are empty as a result`),
     noteJoin: "; ",
     settings: "Preview settings",
@@ -104,6 +105,7 @@ export const en = {
     noDataTag: "no data",
     filledTitle: "No data for this in the current session — the preview shows a sample value",
     hiddenTitle: "No data and no sample — hidden in the preview",
+    placeholderTitle: "No data for this in the current session — it shows its placeholder, as in Claude Code",
     lineMenu: (n: number) => `Line ${n} options`,
     chipHelp: "Alt+Arrow keys move this widget; Enter opens its options; Delete removes it.",
     moved: (name: string, line: number, zone: string, pos: number) => `${name} moved to line ${line}, ${zone.toLowerCase()}, position ${pos}`,
@@ -166,6 +168,16 @@ export const en = {
     spacesShown: "␣ marks a space",
   },
 
+  /** Style → Empty widgets (config `emptyText`). */
+  emptyText: {
+    title: "Empty widgets",
+    hide: "Hide",
+    /** The label in each choice's sample, e.g. "Name –". */
+    sampleLabel: "Name",
+    customLabel: "Custom placeholder",
+    hint: "What a labelled widget shows before it has data, like the session name in a new session. Hide drops it, label and all. A widget can override this in its options.",
+  },
+
   welcome: {
     title: "Set up your statusline",
     steps: [
@@ -207,6 +219,10 @@ export const en = {
     nothingNow: "(nothing to show with the current data)",
     label: "Label",
     hidden: "Hidden",
+    /** Per-widget emptyText. The field's placeholder names what it falls back to. */
+    whenEmpty: "When empty",
+    whenEmptyInherit: (v: string) => (v ? `Style: ${v}` : "Hidden (Style)"),
+    whenEmptyNoLabel: "Hidden (no label)",
     show: "Show",
     hide: "Hide",
     on: "On",
