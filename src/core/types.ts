@@ -2,7 +2,7 @@
  * Core contracts shared by the render engine, the widget registry, the CLI and the web server.
  * Everything here is plain data — no I/O.
  */
-import type { RenderContext as DataContext } from "../data/types.js";
+import type { RenderContext as DataContext, SessionTokenUsage } from "../data/types.js";
 import type { ResponseSpeed } from "./response-speed.js";
 import type { RepoRef } from "./git-remote.js";
 import type { ResetBaseline } from "./reset.js";
@@ -136,6 +136,12 @@ export interface Ctx extends DataContext {
   reset: ResetBaseline | null;
   /** Output speed of the latest long-enough response, from the transcript tail (see response-speed.ts). */
   responseSpeed?: ResponseSpeed | null;
+  /**
+   * Cumulative usage of the session's subagents, read from their own transcript files (subagents.ts);
+   * null when there are none. Kept apart from `transcript.sessionTokens` on purpose: that one also
+   * prices the cost estimate at the main model's rates, and subagents often run a different model.
+   */
+  subagentTokens?: SessionTokenUsage | null;
   /** `origin` from .git/config, filled only when Claude Code didn't send workspace.repo (git-remote.ts). */
   originRepo?: RepoRef | null;
 }

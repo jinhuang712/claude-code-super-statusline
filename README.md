@@ -85,7 +85,7 @@ The preview shows your real session; hover a choice to try it before you click. 
 | Widget | Shows |
 |---|---|
 | Rate-limit windows | 5-hour, 7-day and spend-limit usage (Pro/Max), with reset times |
-| Session tokens | Tokens used this session, with an in/out/cache breakdown |
+| Session tokens | Tokens used this session, subagents included, with an in/out/cache breakdown |
 | Output speed | Tokens per second of the latest reply |
 | Session cost | What the session has cost |
 | API time | Time spent waiting on the API |

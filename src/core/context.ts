@@ -9,6 +9,7 @@ import { resolveEffortLevel } from "../data/effort.js";
 import { getUsageFromStdin } from "../data/stdin.js";
 import { parseTranscript } from "../data/transcript.js";
 import { lastResponseSpeed } from "./response-speed.js";
+import { subagentTokens } from "./subagents.js";
 import { countPluginMcpServers } from "./plugin-mcp.js";
 import { originRepo } from "./git-remote.js";
 import { getClaudeConfigDir } from "../data/claude-config-dir.js";
@@ -103,6 +104,8 @@ export async function buildContext(stdin: StdinData, config: FooterConfig, opts:
     reset: readBaseline(stdin.session_id),
     // A single tail read of the transcript; cheap enough to do on every render.
     responseSpeed: lastResponseSpeed(stdin.transcript_path),
+    // Incremental and cached per file: ~1 ms warm even for a session with 179 subagent files.
+    subagentTokens: subagentTokens(stdin.transcript_path),
     // Only read .git/config when stdin lacks the repo: Claude Code's value wins whenever it is sent.
     originRepo: (stdin as { workspace?: { repo?: unknown } }).workspace?.repo ? null : originRepo(cwd),
   };

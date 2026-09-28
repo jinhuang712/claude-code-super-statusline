@@ -23,7 +23,7 @@ export async function resetLatestSession(sessionId?: string): Promise<ResetResul
   // Read the transcript with no baseline applied so the snapshot is the raw cumulative total.
   clearBaseline(id);
   const ctx = await buildContext(stdin, config, { columns: 120, deadlineMs: 3000 });
-  const baseline = baselineFrom(stdin, ctx.transcript.sessionTokens);
+  const baseline = baselineFrom(stdin, ctx.transcript.sessionTokens, Date.now(), ctx.subagentTokens);
   const path = writeBaseline(id, baseline);
   return { sessionId: id, baseline, path };
 }

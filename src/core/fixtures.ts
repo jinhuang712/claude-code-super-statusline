@@ -27,20 +27,13 @@ function hydrateTimes(p: Record<string, any>, now: number): void {
   if (p.prompt_cache && !p.prompt_cache.expires_at) p.prompt_cache.expires_at = sec + 42 * 60;
 }
 
-/** Write `src` (relative-time JSONL) as a real transcript next to the OS temp dir; returns its path. */
-function materializeTranscript(src: string, now: number): string | null {
-  const dir = path.join(os.tmpdir(), "claude-code-super-statusline-fixtures");
-  const out = path.join(dir, path.basename(src));
-  try {
-    if (now - fs.statSync(out).mtimeMs < REFRESH_MS) return out;
-  } catch {
-    /* not written yet */
-  }
+/** Copy one relative-time JSONL file to `out` with absolute ISO timestamps. False when `src` can't be read. */
+function writeHydrated(src: string, out: string, now: number): boolean {
   let lines: string[];
   try {
     lines = fs.readFileSync(src, "utf8").split("\n").filter(Boolean);
   } catch {
-    return null; // the fixture names a transcript that isn't there: behave like a missing transcript
+    return false;
   }
   const body = lines
     .map((line) => {
@@ -49,11 +42,38 @@ function materializeTranscript(src: string, now: number): string | null {
       return JSON.stringify(e);
     })
     .join("\n");
-  fs.mkdirSync(dir, { recursive: true });
+  fs.mkdirSync(path.dirname(out), { recursive: true });
   const tmp = `${out}.${process.pid}.tmp`;
   fs.writeFileSync(tmp, `${body}\n`);
   fs.renameSync(tmp, out); // atomic: a concurrent render never reads half a file
-  return out;
+  return true;
+}
+
+/**
+ * Write `src` (relative-time JSONL) as a real transcript next to the OS temp dir; returns its path.
+ * A bundled `<name>/subagents/` folder beside it is copied along, laid out the way Claude Code
+ * stores subagent transcripts (see src/core/subagents.ts), so their usage shows in the samples too.
+ */
+function materializeTranscript(src: string, now: number): string | null {
+  const dir = path.join(os.tmpdir(), "claude-code-super-statusline-fixtures");
+  const out = path.join(dir, path.basename(src));
+  try {
+    if (now - fs.statSync(out).mtimeMs < REFRESH_MS) return out;
+  } catch {
+    /* not written yet */
+  }
+  const subSrc = path.join(path.dirname(src), path.basename(src, ".jsonl"), "subagents");
+  const subOut = path.join(dir, path.basename(src, ".jsonl"), "subagents");
+  let subFiles: string[] = [];
+  try {
+    subFiles = (fs.readdirSync(subSrc, { recursive: true }) as string[]).filter((f) => f.endsWith(".jsonl"));
+  } catch {
+    /* this sample has no subagents */
+  }
+  // Subagents first: the main file's mtime is the refresh clock above, so it is written last.
+  for (const f of subFiles) writeHydrated(path.join(subSrc, f), path.join(subOut, f), now);
+  // The fixture names a transcript that isn't there: behave like a missing transcript.
+  return writeHydrated(src, out, now) ? out : null;
 }
 
 /**

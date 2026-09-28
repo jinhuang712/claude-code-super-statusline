@@ -1,0 +1,2 @@
+{"type": "user", "isSidechain": true, "agentId": "docs1", "timestamp": -845, "sessionId": "fixture-basic", "message": {"role": "user", "content": "Draft the API docs section"}}
+{"type": "assistant", "isSidechain": true, "agentId": "docs1", "timestamp": -820, "sessionId": "fixture-basic", "message": {"id": "msg_sb1", "role": "assistant", "model": "claude-sonnet-5", "content": [{"type": "text", "text": "## Rate limits\n…"}], "usage": {"input_tokens": 5, "output_tokens": 2400, "cache_read_input_tokens": 0, "cache_creation_input_tokens": 22000}}}
