@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Claude Code statusline configured from a localhost web UI",
-    "version": "0.5.0"
+    "version": "0.5.1"
   },
   "plugins": [
     {

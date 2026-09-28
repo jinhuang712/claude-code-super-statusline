@@ -2,6 +2,18 @@
 
 Versions follow the plugin manifest (`.claude-plugin/plugin.json`); marketplace installs update when it changes.
 
+## 0.5.1 — 2026-09-28
+
+- **Session tokens counts subagents.** Claude Code writes each subagent's (Task / Agent tool, workflow agents too)
+  records to its own file under `<session>/subagents/`, so the total only ever showed the main conversation — on one
+  real session 55M of the 80M spent. Their usage is now added by default; *Include subagents* turns it off. Session
+  cost and API calls still count the main conversation only (the cost estimate is priced at the main model's rates).
+  Counters reset from now on reset subagent tokens too; a reset made before 0.5.1 shows every subagent token since
+  the session started.
+- **Output speed measures subagent replies too.** It shows the latest long-enough reply from the main conversation
+  or any subagent, each timed on its own chain, instead of staying on the main conversation's last reply while
+  agents work.
+
 ## 0.5.0 — 2026-09-26
 
 - **One colour mode for every progress bar.** Thresholds or gradient used to be picked per widget (*Colour* on
