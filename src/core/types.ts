@@ -39,6 +39,12 @@ export interface WidgetInstance {
   style?: Style;
   /** Optional label to prefix (widgets decide whether they honour it). */
   label?: string | null;
+  /**
+   * What this widget prints while it has no data, after its label: overrides the config-wide
+   * `emptyText`. Unlike the global one it shows even without a label, since the user asked for it
+   * on this widget. "" or null hides the widget when empty, whatever the global setting.
+   */
+  emptyText?: string | null;
 }
 
 export interface LineConfig {
@@ -119,6 +125,12 @@ export interface FooterConfig {
   colorMode: ColorMode;
   /** Cells subtracted from $COLUMNS to leave room for Claude Code's own footer padding. */
   columnsOffset: number;
+  /**
+   * What a labelled widget prints while it has no data, e.g. "–" → "Name –". "" (the default) hides
+   * empty widgets as before. Widgets without a label stay hidden: a bare "–" would not say what is
+   * missing. A widget's own `emptyText` overrides this.
+   */
+  emptyText: string;
   lines: LineConfig[];
   git: GitConfig;
   plugins: PluginsConfig;
@@ -259,8 +271,11 @@ export interface RenderResult {
   lines: string[];
   /** Per-widget errors swallowed during render (plugin failures etc.). */
   errors: Array<{ widget: string; message: string }>;
-  /** Widgets that rendered nothing for this payload; `filled` means the sample text stood in for it. */
-  empty: Array<{ line: number; zone: Zone; index: number; widget: string; filled?: boolean }>;
+  /**
+   * Widgets that had no data for this payload. `filled`: the preview's sample text stood in for it;
+   * `placeholder`: the configured emptyText did (and Claude Code shows the same).
+   */
+  empty: Array<{ line: number; zone: Zone; index: number; widget: string; filled?: boolean; placeholder?: boolean }>;
   ms: number;
 }
 

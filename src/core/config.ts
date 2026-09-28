@@ -55,6 +55,7 @@ export const DEFAULT_CONFIG: FooterConfig = {
   separator: " │ ",
   colorMode: "thresholds",
   columnsOffset: 4,
+  emptyText: "",
   lines: DEFAULT_LINES,
   git: { enabled: true, cacheMs: 2000 },
   plugins: { dirs: [], trustedProjects: [] },
@@ -204,6 +205,7 @@ export function normalizeConfig(input: Partial<FooterConfig>): FooterConfig {
     colorMode: merged.colorMode === "gradient" ? "gradient" : "thresholds",
     colorLevel: ["auto", "truecolor", "256", "16", "none"].includes(merged.colorLevel as string) ? merged.colorLevel : "auto",
     columnsOffset: Number.isFinite(merged.columnsOffset) ? Math.max(0, Math.floor(Number(merged.columnsOffset))) : DEFAULT_CONFIG.columnsOffset,
+    emptyText: typeof merged.emptyText === "string" ? merged.emptyText : DEFAULT_CONFIG.emptyText,
     lines: lines.map(cleanLine),
     git: { enabled: merged.git?.enabled !== false, cacheMs: Number.isFinite(merged.git?.cacheMs) ? Number(merged.git.cacheMs) : 2000 },
     plugins: {

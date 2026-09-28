@@ -6,6 +6,7 @@ import { detectColorLevel, renderSegments, truncateVisual, visualWidth } from ".
 import { createApi } from "./api.js";
 import { getWidget } from "./registry.js";
 import { resolveTheme } from "./theme.js";
+import { labelPrefix } from "../widgets/_shared.js";
 import type { ColorLevel, Ctx, FooterConfig, LineConfig, RenderOptions, RenderResult, Segment, Style, WidgetInstance, Zone } from "./types.js";
 
 interface RenderedWidget {
@@ -17,6 +18,22 @@ interface RenderedWidget {
 }
 /** Marks rendered widgets whose text is the sample stand-in, so the caller can report them. */
 const filledOut = new WeakMap<RenderedWidget, true>();
+/** Marks rendered widgets whose text is the configured emptyText placeholder. */
+const placeheld = new WeakMap<RenderedWidget, true>();
+
+/**
+ * The muted "Label –" an empty widget prints, or null to hide it. The widget's own emptyText wins
+ * and shows even without a label; the config-wide one only fills in labelled widgets, since a bare
+ * "–" would not say what is missing (and would clutter unlabelled ones like the model badge).
+ */
+export function placeholderFor(inst: WidgetInstance, label: unknown, globalEmptyText: string): Segment[] | null {
+  const own = inst.emptyText;
+  const text = own !== undefined ? (own ?? "") : globalEmptyText;
+  if (text === "") return null;
+  const name = typeof label === "string" && label !== "" ? label : null;
+  if (own === undefined && !name) return null;
+  return [{ text: `${labelPrefix(name)}${text}`, style: { fg: "muted" } }];
+}
 
 function mergeStyle(base: Style | undefined, override: Style | undefined): Style | undefined {
   if (!base) return override;
@@ -35,6 +52,7 @@ function renderInstance(
   level: Exclude<ColorLevel, "auto">,
   errors: RenderResult["errors"],
   fillEmpty = false,
+  globalEmptyText = "",
 ): RenderedWidget | null {
   const def = getWidget(inst.widget);
   const api = createApi(ctx.theme, ctx.now, ctx.colorMode);
@@ -53,6 +71,15 @@ function renderInstance(
     let segs: Segment[] = out === null || out === undefined ? [] : typeof out === "string" ? [{ text: out }] : out;
     let filled = false;
     if (segs.length === 0 || segs.every((s) => s.text === "")) {
+      // A configured placeholder beats the preview's sample: it is what Claude Code will show, and
+      // the preview is where the user checks that it reads right.
+      const holder = placeholderFor(inst, ownsLabel ? opts.label : inst.label, globalEmptyText);
+      if (holder) {
+        const text = renderSegments(holder, ctx.theme, level);
+        const rendered = { text, width: visualWidth(text) };
+        placeheld.set(rendered, true);
+        return rendered;
+      }
       const sample = def.sampleFor?.(opts) || def.sample;
       if (!fillEmpty || !sample) return null;
       segs = [{ text: sample }];
@@ -80,13 +107,15 @@ function renderZone(
   empty: RenderResult["empty"],
   at: { line: number; zone: Zone },
   fillEmpty: boolean,
+  emptyText: string,
 ): RenderedWidget {
   const rendered: RenderedWidget[] = [];
   (items ?? []).forEach((inst, index) => {
-    const r = renderInstance(inst, ctx, level, errors, fillEmpty);
+    const r = renderInstance(inst, ctx, level, errors, fillEmpty, emptyText);
     if (r) {
       rendered.push(r);
       if (filledOut.has(r)) empty.push({ ...at, index, widget: inst.widget, filled: true });
+      else if (placeheld.has(r)) empty.push({ ...at, index, widget: inst.widget, placeholder: true });
     } else empty.push({ ...at, index, widget: inst.widget });
   });
   if (rendered.length === 0) return { text: "", width: 0 };
@@ -219,10 +248,12 @@ export function render(config: FooterConfig, ctx: Omit<Ctx, "theme" | "colorMode
   config.lines.forEach((line, li) => {
     if (line.minColumns && ctx.columns > 0 && ctx.columns < line.minColumns) return;
     const sep = line.separator ?? config.separator;
+    // `?? ""`: callers may hand in a config that never went through normalizeConfig (tests, plugins).
+    const emptyText = config.emptyText ?? "";
     const zones: Record<Zone, RenderedWidget> = {
-      left: renderZone(line.left, fullCtx, level, sep, errors, empty, { line: li, zone: "left" }, fillEmpty),
-      center: renderZone(line.center, fullCtx, level, sep, errors, empty, { line: li, zone: "center" }, fillEmpty),
-      right: renderZone(line.right, fullCtx, level, sep, errors, empty, { line: li, zone: "right" }, fillEmpty),
+      left: renderZone(line.left, fullCtx, level, sep, errors, empty, { line: li, zone: "left" }, fillEmpty, emptyText),
+      center: renderZone(line.center, fullCtx, level, sep, errors, empty, { line: li, zone: "center" }, fillEmpty, emptyText),
+      right: renderZone(line.right, fullCtx, level, sep, errors, empty, { line: li, zone: "right" }, fillEmpty, emptyText),
     };
     lines.push(...layoutLine(zones, ctx.columns, line.overflow));
   });

@@ -15,6 +15,7 @@ The page writes `~/.config/claude-code-super-statusline/config.json`. A project 
   "colorMode": "gradient",      // thresholds | gradient — how every bar and percentage is coloured
   "separator": " │ ",
   "columnsOffset": 4,           // cells left free for Claude Code's own footer padding
+  "emptyText": "–",             // a labelled widget with no data yet shows "Name –"; "" (default) hides it
   "lines": [
     { "left":  [{ "widget": "project.path", "options": { "levels": "tilde" } }, { "widget": "git.branch" }],
       "right": [{ "widget": "model.badge" }, { "widget": "cost.session" }] },
@@ -27,9 +28,13 @@ The page writes `~/.config/claude-code-super-statusline/config.json`. A project 
 }
 ```
 
-A widget is `{ "widget": "<id>", "options": {…}, "style": { "fg", "bg", "bold", "dim", "italic", "underline" }, "label": "…" | null }`.
+A widget is `{ "widget": "<id>", "options": {…}, "style": { "fg", "bg", "bold", "dim", "italic", "underline" }, "label": "…" | null, "emptyText": "…" | null }`.
 Colours are theme tokens (`fg muted accent ok warn crit model project git usage context`), literals (`#rrggbb`,
 `208`, `red`) or `default`, the terminal's own colour.
+
+A widget with no data (no session name yet, no usage limits before the first reply) is hidden, label and all.
+`emptyText` shows a placeholder instead: the config-wide one fills in every widget that has a label, and a
+widget's own `emptyText` overrides it — shown even without a label, and `""` or `null` keeps that widget hidden.
 
 ## Command line
 

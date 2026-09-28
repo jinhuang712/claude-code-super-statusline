@@ -182,6 +182,45 @@ describe("render", () => {
   });
 });
 
+describe("emptyText placeholder", () => {
+  const ctx = { columns: 0, now: 0 } as unknown as Omit<Ctx, "theme" | "colorMode">;
+  const setup = () => {
+    _resetRegistry();
+    const labelSchema = { type: ["string", "null"], default: "Name" };
+    // "named" renders its own label (it owns the `label` option); "bare" has no label at all.
+    registerWidget(defineWidget({ id: "named", name: "named", description: "", category: "misc", schema: { type: "object", properties: { label: labelSchema } }, defaults: { label: "Name" }, sample: "Demo", render: () => null }));
+    registerWidget(defineWidget({ id: "bare", name: "bare", description: "", category: "misc", schema: {}, defaults: {}, sample: "[Model]", render: () => null }));
+    registerWidget(defineWidget({ id: "ok", name: "ok", description: "", category: "misc", schema: {}, defaults: {}, render: () => "fine" }));
+  };
+  const run = (emptyText: string, left: Parameters<typeof render>[0]["lines"][number]["left"], fillEmpty = false) =>
+    render({ ...DEFAULT_CONFIG, colorLevel: "none", emptyText, lines: [{ left }] }, ctx, { fillEmpty });
+
+  test("unset keeps today's behaviour: empty widgets are hidden", () => {
+    setup();
+    expect(run("", [{ widget: "named" }, { widget: "ok" }]).lines).toEqual(["fine"]);
+  });
+  test("a global placeholder fills labelled widgets only", () => {
+    setup();
+    const out = run("–", [{ widget: "named" }, { widget: "bare" }, { widget: "bare", label: "Model" }, { widget: "ok" }]);
+    expect(out.lines).toEqual(["Name – │ Model – │ fine"]);
+    expect(out.empty.map((e) => [e.widget, e.placeholder ?? false])).toEqual([["named", true], ["bare", false], ["bare", true]]);
+  });
+  test("a hidden label means no global placeholder either", () => {
+    setup();
+    expect(run("–", [{ widget: "named", label: null }, { widget: "ok" }]).lines).toEqual(["fine"]);
+  });
+  test("a widget's own emptyText wins, shows without a label, and \"\" or null opts out", () => {
+    setup();
+    expect(run("", [{ widget: "bare", emptyText: "no model" }]).lines).toEqual(["no model"]);
+    expect(run("–", [{ widget: "named", emptyText: "…" }]).lines).toEqual(["Name …"]);
+    expect(run("–", [{ widget: "named", emptyText: "" }, { widget: "named", emptyText: null }, { widget: "ok" }]).lines).toEqual(["fine"]);
+  });
+  test("in the preview, a placeholder beats the sample; without one the sample still fills in", () => {
+    setup();
+    expect(run("–", [{ widget: "named" }, { widget: "bare" }], true).lines).toEqual(["Name – │ [Model]"]);
+  });
+});
+
 describe("guardLeadingSpace survives Claude Code's per-line trim", () => {
   // What Claude Code 2.1.283 does to the command's stdout before drawing it (anthropics/claude-code#29206).
   const claudeCodeClean = (stdout: string) =>

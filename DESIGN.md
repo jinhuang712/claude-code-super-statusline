@@ -35,6 +35,7 @@ Claude Code ≥ 2.1.251 now ships `rate_limits`, `prompt_cache`, `effort`, `cost
   "colorMode": "thresholds",      // thresholds | gradient — every bar and percentage (Style → Progress bar mode)
   "separator": " │ ",             // between widgets inside a zone
   "columnsOffset": 4,             // cells left free for Claude Code's own footer padding
+  "emptyText": "",                // placeholder for a labelled widget with no data; "" hides it
   "lines": [
     { "left":  [{ "widget": "project.path", "options": { "levels": "full" } }, { "widget": "git.branch" }],
       "right": [{ "widget": "model.badge" }] },
@@ -54,7 +55,9 @@ Claude Code ≥ 2.1.251 now ships `rate_limits`, `prompt_cache`, `effort`, `cost
   column with holes on every continuation row. `drop-right` (hide the right zone) still renders for old configs but is no
   longer offered in the panel. Until 0.2.x, `wrap` dropped the *right* zone to a row of its own and `truncate`
   cut the joined line from the end, which hid the right zone.
-* A widget that renders `null` simply disappears; separators collapse.
+* A widget that renders `null` simply disappears; separators collapse. With `emptyText` set (config-wide for
+  labelled widgets, or per widget) it prints `Label <emptyText>` in muted instead, so a fresh session keeps its
+  labels and rows. In the preview that placeholder beats the sample value, since it is what Claude Code shows.
 * Claude Code trims every line of the output (`l.trim()`, anthropics/claude-code#29206), so a row that starts
   with padding — a right-only or center-only row — leads with a zero-width `ESC[0m` to keep it (`guardLeadingSpace`).
 
